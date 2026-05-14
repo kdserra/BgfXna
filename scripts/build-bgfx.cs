@@ -140,7 +140,19 @@ static IosToolchain FindIosToolchain(string target)
         throw new InvalidOperationException($"Could not resolve the {sdk} SDK path. Install Xcode and run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer");
     }
 
-    return new IosToolchain(platform, sdkPath);
+    string architecture = target.Equals("ios-simulator", StringComparison.OrdinalIgnoreCase)
+        ? Capture("uname", ["-m"], Directory.GetCurrentDirectory()).Trim()
+        : "arm64";
+    if (!architecture.Equals("x86_64", StringComparison.OrdinalIgnoreCase))
+    {
+        architecture = "arm64";
+    }
+
+    string targetTriple = target.Equals("ios-simulator", StringComparison.OrdinalIgnoreCase)
+        ? $"{architecture}-apple-ios16.0-simulator"
+        : "arm64-apple-ios16.0";
+
+    return new IosToolchain(platform, sdkPath, targetTriple);
 }
 
 static void PatchIosGeneratedMakefiles(string projectDirectory, IosToolchain toolchain)
@@ -157,11 +169,31 @@ static void PatchIosGeneratedMakefiles(string projectDirectory, IosToolchain too
     {
         string contents = File.ReadAllText(file);
         string patched = Regex.Replace(contents, sdkPattern, toolchain.SdkPath.Replace("\\", "/"));
+        patched = AddMakefileFlag(patched, "INCLUDES", "-I\"../../../../bx/include/compat/ios\"");
+        patched = AddMakefileFlag(patched, "ALL_ASMFLAGS", $"-target {toolchain.TargetTriple}");
+        patched = AddMakefileFlag(patched, "ALL_CFLAGS", $"-target {toolchain.TargetTriple}");
+        patched = AddMakefileFlag(patched, "ALL_CXXFLAGS", $"-target {toolchain.TargetTriple}");
+        patched = AddMakefileFlag(patched, "ALL_OBJCFLAGS", $"-target {toolchain.TargetTriple}");
+        patched = AddMakefileFlag(patched, "ALL_OBJCPPFLAGS", $"-target {toolchain.TargetTriple}");
         if (!string.Equals(contents, patched, StringComparison.Ordinal))
         {
             File.WriteAllText(file, patched);
         }
     }
+}
+
+static string AddMakefileFlag(string contents, string variable, string flag)
+{
+    if (contents.Contains(flag, StringComparison.Ordinal))
+    {
+        return contents;
+    }
+
+    return Regex.Replace(
+        contents,
+        $@"(^\s*{Regex.Escape(variable)}\s*\+=.*)$",
+        $"$1 {flag}",
+        RegexOptions.Multiline);
 }
 
 static string SourcePath([CallerFilePath] string path = "") => path;
@@ -542,7 +574,7 @@ internal static class ProcessStartInfoExtensions
     }
 }
 
-internal sealed record IosToolchain(string Platform, string SdkPath);
+internal sealed record IosToolchain(string Platform, string SdkPath, string TargetTriple);
 
 internal sealed record Options(string Configuration, string Platform, string Target, string SourceRoot, string Generator, bool SkipClone)
 {
