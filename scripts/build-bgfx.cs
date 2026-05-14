@@ -147,11 +147,27 @@ static string FindGenie(string bxPath)
     {
         if (File.Exists(candidate))
         {
+            EnsureExecutable(candidate);
             return candidate;
         }
     }
 
     throw new InvalidOperationException($"GENie was not found under {Path.Combine(bxPath, "tools", "bin")}. Make sure bx was cloned correctly.");
+}
+
+static void EnsureExecutable(string path)
+{
+    if (OperatingSystem.IsWindows())
+    {
+        return;
+    }
+
+    UnixFileMode mode = File.GetUnixFileMode(path);
+    UnixFileMode executableBits = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+    if ((mode & executableBits) != executableBits)
+    {
+        File.SetUnixFileMode(path, mode | executableBits);
+    }
 }
 
 void CloneIfMissing(string repositoryUrl, string targetPath)
