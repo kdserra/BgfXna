@@ -170,6 +170,16 @@ static void PatchIosGeneratedMakefiles(string projectDirectory, IosToolchain too
         string contents = File.ReadAllText(file);
         string patched = Regex.Replace(contents, sdkPattern, toolchain.SdkPath.Replace("\\", "/"));
         patched = AddMakefileFlag(patched, "INCLUDES", "-I\"../../../../bx/include/compat/ios\"");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_AGC=0");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_DIRECT3D11=0");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_DIRECT3D12=0");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_GNM=0");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_METAL=1");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_NVN=0");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_OPENGL=0");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_OPENGLES=0");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_VULKAN=0");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_WEBGPU=0");
         patched = AddMakefileFlag(patched, "ALL_ASMFLAGS", $"-target {toolchain.TargetTriple}");
         patched = AddMakefileFlag(patched, "ALL_CFLAGS", $"-target {toolchain.TargetTriple}");
         patched = AddMakefileFlag(patched, "ALL_CXXFLAGS", $"-target {toolchain.TargetTriple}");
