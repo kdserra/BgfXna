@@ -1,0 +1,54 @@
+<Project>
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))">
+    <None Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(RuntimeIdentifier)\*.dll" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(RuntimeIdentifier)')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(Filename)%(Extension)</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and '$(RuntimeIdentifier)' == '' and ($([System.String]::Copy('$(TargetFramework)').Contains('-windows')) or $([System.String]::Copy('$(DefineConstants)').Contains('WINDOWS_DESKTOP_HOST')))">
+    <None Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\win-x64\*.dll" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\win-x64')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(Filename)%(Extension)</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux-'))">
+    <None Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(RuntimeIdentifier)\*.so" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(RuntimeIdentifier)')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(Filename)%(Extension)</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-'))">
+    <None Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(RuntimeIdentifier)\*.dylib" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(RuntimeIdentifier)')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>%(Filename)%(Extension)</Link>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-browser' and '$(RuntimeIdentifier)' == 'browser-wasm'">
+    <NativeFileReference Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm\*.a" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm')" />
+  </ItemGroup>
+
+  <Target Name="BgfXnaRequireBrowserWasmNativeBgfx"
+          BeforeTargets="Build"
+          Condition="'$(TargetFramework)' == 'net10.0-browser' and '$(RuntimeIdentifier)' == 'browser-wasm' and '$(DesignTimeBuild)' != 'true' and !Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm')">
+    <Error Text="BGFX browser-wasm native libraries were not found at '$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm'. Build them with: dotnet run .\scripts\build-bgfx.cs -- --target browser-wasm --configuration $(Configuration) --source-root native-src --skip-clone" />
+  </Target>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'BgfXna' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([System.String]::Copy('$(TargetFramework)').Contains('-android'))">
+    <AndroidNativeLibrary Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-arm64\libbgfx*.so" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-arm64')">
+      <Abi>arm64-v8a</Abi>
+    </AndroidNativeLibrary>
+    <AndroidNativeLibrary Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-arm\libbgfx*.so" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-arm')">
+      <Abi>armeabi-v7a</Abi>
+    </AndroidNativeLibrary>
+    <AndroidNativeLibrary Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-x64\libbgfx*.so" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-x64')">
+      <Abi>x86_64</Abi>
+    </AndroidNativeLibrary>
+    <AndroidNativeLibrary Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-x86\libbgfx*.so" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-x86')">
+      <Abi>x86</Abi>
+    </AndroidNativeLibrary>
+  </ItemGroup>
+</Project>

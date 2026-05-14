@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifiers>win-x64;win-arm64;linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DefineConstants>$(DefineConstants);SAMPLE_BACKEND_OPENGL</DefineConstants>
+    <AssemblyName>BgfXna.Sample.DesktopOpenGL</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-')) or ('$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows')))">
+    <OutputType>WinExe</OutputType>
+    <DefineConstants>$(DefineConstants);WINDOWS_DESKTOP_HOST</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="!($([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-')) or ('$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows'))))">
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BgfXna\BgfXna.csproj" />
+    <Compile Include="..\Shared\*.cs" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>23.0</SupportedOSPlatformVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DefineConstants>$(DefineConstants);SAMPLE_BACKEND_OPENGLES</DefineConstants>
+    <AssemblyName>BgfXna.Sample.AndroidOpenGL</AssemblyName>
+    <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\BgfXna\BgfXna.csproj" />
+    <Compile Include="..\Shared\*.cs" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AndroidNativeLibrary Include="..\..\native\bgfx\bin\$(Configuration)\android-arm64\libc++_shared.so" Condition="Exists('..\..\native\bgfx\bin\$(Configuration)\android-arm64\libc++_shared.so')">
+      <Abi>arm64-v8a</Abi>
+    </AndroidNativeLibrary>
+    <AndroidNativeLibrary Include="..\..\native\bgfx\bin\$(Configuration)\android-x64\libc++_shared.so" Condition="Exists('..\..\native\bgfx\bin\$(Configuration)\android-x64\libc++_shared.so')">
+      <Abi>x86_64</Abi>
+    </AndroidNativeLibrary>
+  </ItemGroup>
+</Project>

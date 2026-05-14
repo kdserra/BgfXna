@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/Samples/">
+    <Project Path="Samples/AndroidOpenGL/AndroidOpenGL.csproj">
+      <Deploy />
+    </Project>
+    <Project Path="Samples/AndroidOpenGLES/AndroidOpenGLES.csproj">
+      <Deploy />
+    </Project>
+    <Project Path="Samples/BrowserWebApp/BrowserWebApp.csproj" />
+    <Project Path="Samples/DesktopOpenGL/DesktopOpenGL.csproj" />
+    <Project Path="Samples/DesktopOpenGLES/DesktopOpenGLES.csproj" />
+    <Project Path="Samples/DesktopVulkan/DesktopVulkan.csproj" />
+    <Project Path="Samples/iOSOpenGL/iOSOpenGL.csproj" />
+    <Project Path="Samples/iOSOpenGLES/iOSOpenGLES.csproj" />
+    <Project Path="Samples/MacMetal/MacMetal.csproj" />
+    <Project Path="Samples/WindowsDX11/WindowsDX11.csproj" />
+    <Project Path="Samples/WindowsDX12/WindowsDX12.csproj" />
+  </Folder>
+  <Project Path="BgfXna/BgfXna.csproj" />
+</Solution>
