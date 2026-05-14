@@ -168,6 +168,25 @@ static void EnsureExecutable(string path)
     {
         File.SetUnixFileMode(path, mode | executableBits);
     }
+
+    if (OperatingSystem.IsMacOS())
+    {
+        RemoveMacQuarantine(path);
+    }
+}
+
+static void RemoveMacQuarantine(string path)
+{
+    using Process process = Process.Start(new ProcessStartInfo
+    {
+        FileName = "xattr",
+        WorkingDirectory = Path.GetDirectoryName(path)!,
+        UseShellExecute = false,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+    }.WithArguments(["-d", "com.apple.quarantine", path])) ?? throw new InvalidOperationException("Failed to start xattr.");
+
+    process.WaitForExit();
 }
 
 void CloneIfMissing(string repositoryUrl, string targetPath)
