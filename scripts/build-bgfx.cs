@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 Options options = Options.Parse(args);
 string scriptPath = SourcePath();
@@ -57,7 +58,9 @@ else if (options.IsIOS)
 {
     string gcc = ToIosGcc(options.Target);
     string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", $"gmake-{gcc}");
+    IosToolchain iosToolchain = FindIosToolchain(options.Target);
     Run(genie, [$"--gcc={gcc}", "gmake"], bgfxPath);
+    PatchIosGeneratedMakefiles(projectDirectory, iosToolchain);
     string make = FindMake();
     Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}"], bgfxPath);
 
@@ -116,6 +119,50 @@ static string ToIosGcc(string target) =>
         "ios-simulator" => "ios-simulator",
         _ => throw new ArgumentException($"Target '{target}' is not an iOS target."),
     };
+
+static IosToolchain FindIosToolchain(string target)
+{
+    if (!OperatingSystem.IsMacOS())
+    {
+        throw new InvalidOperationException("iOS BGFX native libraries must be built on macOS with Xcode installed.");
+    }
+
+    string sdk = target.Equals("ios-simulator", StringComparison.OrdinalIgnoreCase)
+        ? "iphonesimulator"
+        : "iphoneos";
+    string platform = target.Equals("ios-simulator", StringComparison.OrdinalIgnoreCase)
+        ? "iPhoneSimulator"
+        : "iPhoneOS";
+
+    string sdkPath = Capture("xcrun", ["--sdk", sdk, "--show-sdk-path"], Directory.GetCurrentDirectory()).Trim();
+    if (string.IsNullOrWhiteSpace(sdkPath) || !Directory.Exists(sdkPath))
+    {
+        throw new InvalidOperationException($"Could not resolve the {sdk} SDK path. Install Xcode and run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer");
+    }
+
+    return new IosToolchain(platform, sdkPath);
+}
+
+static void PatchIosGeneratedMakefiles(string projectDirectory, IosToolchain toolchain)
+{
+    if (!Directory.Exists(projectDirectory))
+    {
+        return;
+    }
+
+    string sdkPattern = $@"/Applications/Xcode\.app/Contents/Developer/Platforms/{Regex.Escape(toolchain.Platform)}\.platform/Developer/SDKs/{Regex.Escape(toolchain.Platform)}[^""\s]*?\.sdk";
+    foreach (string file in Directory.EnumerateFiles(projectDirectory, "*", SearchOption.TopDirectoryOnly)
+        .Where(path => Path.GetFileName(path).Equals("Makefile", StringComparison.OrdinalIgnoreCase)
+            || Path.GetExtension(path).Equals(".make", StringComparison.OrdinalIgnoreCase)))
+    {
+        string contents = File.ReadAllText(file);
+        string patched = Regex.Replace(contents, sdkPattern, toolchain.SdkPath.Replace("\\", "/"));
+        if (!string.Equals(contents, patched, StringComparison.Ordinal))
+        {
+            File.WriteAllText(file, patched);
+        }
+    }
+}
 
 static string SourcePath([CallerFilePath] string path = "") => path;
 
@@ -494,6 +541,8 @@ internal static class ProcessStartInfoExtensions
         return startInfo;
     }
 }
+
+internal sealed record IosToolchain(string Platform, string SdkPath);
 
 internal sealed record Options(string Configuration, string Platform, string Target, string SourceRoot, string Generator, bool SkipClone)
 {
