@@ -460,4 +460,6 @@ $RECYCLE.BIN/
 buildcheck
 native
 Lib
-.chrome-profile
+.chrome*
+*.err
+*.out
