@@ -121,13 +121,27 @@ static string SourcePath([CallerFilePath] string path = "") => path;
 
 static string FindGenie(string bxPath)
 {
-    string[] candidates =
-    [
-        Path.Combine(bxPath, "tools", "bin", "windows", "genie.exe"),
-        Path.Combine(bxPath, "tools", "bin", "darwin", "genie"),
-        Path.Combine(bxPath, "tools", "bin", "linux", "genie"),
-        Path.Combine(bxPath, "tools", "bin", "freebsd", "genie"),
-    ];
+    string[] candidates = OperatingSystem.IsMacOS()
+        ?
+        [
+            Path.Combine(bxPath, "tools", "bin", "darwin", "genie"),
+            Path.Combine(bxPath, "tools", "bin", "osx", "genie"),
+            Path.Combine(bxPath, "tools", "bin", "windows", "genie.exe"),
+        ]
+        : OperatingSystem.IsLinux()
+            ?
+            [
+                Path.Combine(bxPath, "tools", "bin", "linux", "genie"),
+                Path.Combine(bxPath, "tools", "bin", "freebsd", "genie"),
+                Path.Combine(bxPath, "tools", "bin", "windows", "genie.exe"),
+            ]
+            :
+            [
+                Path.Combine(bxPath, "tools", "bin", "windows", "genie.exe"),
+                Path.Combine(bxPath, "tools", "bin", "darwin", "genie"),
+                Path.Combine(bxPath, "tools", "bin", "linux", "genie"),
+                Path.Combine(bxPath, "tools", "bin", "freebsd", "genie"),
+            ];
 
     foreach (string candidate in candidates)
     {
