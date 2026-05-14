@@ -477,14 +477,86 @@ internal sealed record EmscriptenToolchain(string EmscriptenPath, string Emmake,
 {
     public static EmscriptenToolchain Create(string emscriptenPath, string emmake)
     {
+        string toolsPath = Path.GetFullPath(Path.Combine(emscriptenPath, ".."));
+        string sdkVersionPath = Path.GetFullPath(Path.Combine(toolsPath, ".."));
+        string sdkVersion = Path.GetFileName(sdkVersionPath);
+        string sdkPackPath = Path.GetFullPath(Path.Combine(sdkVersionPath, ".."));
+        string packsRoot = Path.GetFullPath(Path.Combine(sdkPackPath, ".."));
+        string sdkPackName = Path.GetFileName(sdkPackPath);
+        string emscriptenVersion = GetEmscriptenVersionFromPackName(sdkPackName);
+        string nodePackName = sdkPackName.Replace(".Sdk.", ".Node.", StringComparison.OrdinalIgnoreCase);
+
+        string llvmRoot = Path.Combine(toolsPath, "bin");
+        string binaryenRoot = toolsPath;
+        string cacheRoot = Path.Combine(Directory.GetCurrentDirectory(), "native", "bgfx", "obj", "emscripten-cache");
+        string nodePath = Path.Combine(packsRoot, nodePackName, sdkVersion, "tools", "bin", OperatingSystem.IsWindows() ? "node.exe" : "node");
+        string nodeDirectory = Path.GetDirectoryName(nodePath)!;
+
+        if (!File.Exists(Path.Combine(llvmRoot, OperatingSystem.IsWindows() ? "clang.exe" : "clang")))
+        {
+            throw new InvalidOperationException($"Emscripten LLVM tools were not found at {llvmRoot}.");
+        }
+
+        if (!File.Exists(Path.Combine(binaryenRoot, "bin", OperatingSystem.IsWindows() ? "wasm-opt.exe" : "wasm-opt")))
+        {
+            throw new InvalidOperationException($"Emscripten Binaryen tools were not found at {binaryenRoot}.");
+        }
+
+        if (!File.Exists(nodePath))
+        {
+            throw new InvalidOperationException($"Emscripten Node.js runtime was not found at {nodePath}.");
+        }
+
+        Directory.CreateDirectory(cacheRoot);
+
         string? existingPath = System.Environment.GetEnvironmentVariable("PATH");
+        string[] pathEntries = [emscriptenPath, llvmRoot, nodeDirectory];
+        string[] versionParts = emscriptenVersion.Split('.');
+        string emscriptenVersionDefines = string.Join(' ', [
+            $"-D__EMSCRIPTEN_MAJOR__={versionParts[0]}",
+            $"-D__EMSCRIPTEN_MINOR__={versionParts[1]}",
+            $"-D__EMSCRIPTEN_TINY__={versionParts[2]}",
+        ]);
         Dictionary<string, string> environment = new(StringComparer.OrdinalIgnoreCase)
         {
+            ["EMSCRIPTEN"] = emscriptenPath,
+            ["EM_CACHE"] = cacheRoot,
+            ["EM_FROZEN_CACHE"] = "0",
+            ["DOTNET_EMSCRIPTEN_LLVM_ROOT"] = llvmRoot,
+            ["DOTNET_EMSCRIPTEN_NODE_JS"] = nodePath,
+            ["DOTNET_EMSCRIPTEN_BINARYEN_ROOT"] = binaryenRoot,
+            ["CFLAGS"] = MergeFlags(emscriptenVersionDefines, System.Environment.GetEnvironmentVariable("CFLAGS")),
+            ["CXXFLAGS"] = MergeFlags(emscriptenVersionDefines, System.Environment.GetEnvironmentVariable("CXXFLAGS")),
+            ["CPPFLAGS"] = MergeFlags(emscriptenVersionDefines, System.Environment.GetEnvironmentVariable("CPPFLAGS")),
             ["PATH"] = string.IsNullOrWhiteSpace(existingPath)
-                ? emscriptenPath
-                : emscriptenPath + Path.PathSeparator + existingPath,
+                ? string.Join(Path.PathSeparator, pathEntries)
+                : string.Join(Path.PathSeparator, pathEntries) + Path.PathSeparator + existingPath,
         };
 
         return new EmscriptenToolchain(emscriptenPath, emmake, environment);
     }
+
+    private static string GetEmscriptenVersionFromPackName(string sdkPackName)
+    {
+        const string prefix = "Microsoft.NET.Runtime.Emscripten.";
+        int start = sdkPackName.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
+        int end = sdkPackName.IndexOf(".Sdk.", StringComparison.OrdinalIgnoreCase);
+        if (start < 0 || end < 0 || end <= start + prefix.Length)
+        {
+            throw new InvalidOperationException($"Could not determine Emscripten version from SDK pack name '{sdkPackName}'.");
+        }
+
+        string version = sdkPackName[(start + prefix.Length)..end];
+        if (version.Split('.').Length != 3)
+        {
+            throw new InvalidOperationException($"Unexpected Emscripten version '{version}' in SDK pack name '{sdkPackName}'.");
+        }
+
+        return version;
+    }
+
+    private static string MergeFlags(string requiredFlags, string? existingFlags) =>
+        string.IsNullOrWhiteSpace(existingFlags)
+            ? requiredFlags
+            : requiredFlags + " " + existingFlags;
 }

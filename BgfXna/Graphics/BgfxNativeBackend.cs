@@ -56,6 +56,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
         _backBufferHeight = options.BackBufferHeight;
 
         bool initialized;
+        IntPtr browserCanvasHandle = IntPtr.Zero;
         try
         {
             bgfx.Init init;
@@ -64,6 +65,12 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             if (options.NativeWindowHandle != IntPtr.Zero)
             {
                 init.platformData.nwh = options.NativeWindowHandle.ToPointer();
+                init.platformData.type = bgfx.NativeWindowHandleType.Default;
+            }
+            else if (IsBrowserRuntime())
+            {
+                browserCanvasHandle = Marshal.StringToHGlobalAnsi("#canvas");
+                init.platformData.nwh = browserCanvasHandle.ToPointer();
                 init.platformData.type = bgfx.NativeWindowHandleType.Default;
             }
             init.resolution.width = (uint)options.BackBufferWidth;
@@ -88,6 +95,13 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
                 "The loaded BGFX native library does not expose the expected bgfx C99 API entry points. Rebuild BGFX as a shared library with the C99 API enabled.",
                 exception
             );
+        }
+        finally
+        {
+            if (browserCanvasHandle != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(browserCanvasHandle);
+            }
         }
 
         if (!initialized)

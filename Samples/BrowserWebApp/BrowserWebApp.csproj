@@ -23,6 +23,7 @@
     <WasmMainHTMLPath>wwwroot\index.html</WasmMainHTMLPath>
     <WasmMainJSPath>wwwroot\main.js</WasmMainJSPath>
     <DefaultWasmHostConfig>browser</DefaultWasmHostConfig>
+    <EmccExtraLDFlags>$(EmccExtraLDFlags) -s MAX_WEBGL_VERSION=2 -s GL_ENABLE_GET_PROC_ADDRESS=1</EmccExtraLDFlags>
   </PropertyGroup>
 
   <ItemGroup>

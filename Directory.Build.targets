@@ -27,14 +27,19 @@
     </None>
   </ItemGroup>
 
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-browser' and '$(RuntimeIdentifier)' == 'browser-wasm'">
+    <BgfXnaBrowserWasmNativeRuntimeDirectory>$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm</BgfXnaBrowserWasmNativeRuntimeDirectory>
+    <BgfXnaBrowserWasmNativeRuntimeDirectory Condition="!Exists('$(BgfXnaBrowserWasmNativeRuntimeDirectory)') and Exists('$(BgfXnaNativeRuntimeRoot)Release\browser-wasm')">$(BgfXnaNativeRuntimeRoot)Release\browser-wasm</BgfXnaBrowserWasmNativeRuntimeDirectory>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-browser' and '$(RuntimeIdentifier)' == 'browser-wasm'">
-    <NativeFileReference Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm\*.a" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm')" />
+    <NativeFileReference Include="$(BgfXnaBrowserWasmNativeRuntimeDirectory)\*.a" Condition="Exists('$(BgfXnaBrowserWasmNativeRuntimeDirectory)')" />
   </ItemGroup>
 
   <Target Name="BgfXnaRequireBrowserWasmNativeBgfx"
           BeforeTargets="Build"
-          Condition="'$(TargetFramework)' == 'net10.0-browser' and '$(RuntimeIdentifier)' == 'browser-wasm' and '$(DesignTimeBuild)' != 'true' and !Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm')">
-    <Error Text="BGFX browser-wasm native libraries were not found at '$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm'. Build them with: dotnet run .\scripts\build-bgfx.cs -- --target browser-wasm --configuration $(Configuration) --source-root native-src --skip-clone" />
+          Condition="'$(TargetFramework)' == 'net10.0-browser' and '$(RuntimeIdentifier)' == 'browser-wasm' and '$(DesignTimeBuild)' != 'true' and !Exists('$(BgfXnaBrowserWasmNativeRuntimeDirectory)')">
+    <Error Text="BGFX browser-wasm native libraries were not found at '$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm' or '$(BgfXnaNativeRuntimeRoot)Release\browser-wasm'. Build them with: dotnet run .\scripts\build-bgfx.cs -- --target browser-wasm --configuration Release --source-root native-src --skip-clone" />
   </Target>
 
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'BgfXna' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([System.String]::Copy('$(TargetFramework)').Contains('-android'))">

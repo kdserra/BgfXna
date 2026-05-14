@@ -24,7 +24,7 @@ namespace Bgfx
         const string DllName = "bgfx";
 #endif
 #elif BROWSER
-        const string DllName = "__Internal";
+        const string DllName = "libbgfx";
 #elif DEBUG
         const string DllName = "bgfx_debug.dll";
 #else
