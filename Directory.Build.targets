@@ -42,6 +42,32 @@
     <Error Text="BGFX browser-wasm native libraries were not found at '$(BgfXnaNativeRuntimeRoot)$(Configuration)\browser-wasm' or '$(BgfXnaNativeRuntimeRoot)Release\browser-wasm'. Build them with: dotnet run .\scripts\build-bgfx.cs -- --target browser-wasm --configuration Release --source-root native-src --skip-clone" />
   </Target>
 
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
+    <BgfXnaIosNativeTarget Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('iossimulator-'))">ios-simulator</BgfXnaIosNativeTarget>
+    <BgfXnaIosNativeTarget Condition="'$(BgfXnaIosNativeTarget)' == ''">ios-arm64</BgfXnaIosNativeTarget>
+    <BgfXnaIosNativeRuntimeDirectory>$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(BgfXnaIosNativeTarget)</BgfXnaIosNativeRuntimeDirectory>
+    <BgfXnaIosNativeRuntimeDirectory Condition="!Exists('$(BgfXnaIosNativeRuntimeDirectory)') and Exists('$(BgfXnaNativeRuntimeRoot)Release\$(BgfXnaIosNativeTarget)')">$(BgfXnaNativeRuntimeRoot)Release\$(BgfXnaIosNativeTarget)</BgfXnaIosNativeRuntimeDirectory>
+  </PropertyGroup>
+
+  <Target Name="BgfXnaRequireIosNativeBgfx"
+          BeforeTargets="Build"
+          Condition="'$(TargetFramework)' == 'net10.0-ios' and '$(MSBuildProjectName)' != 'BgfXna' and '$(DesignTimeBuild)' != 'true' and !Exists('$(BgfXnaIosNativeRuntimeDirectory)')">
+    <Error Text="BGFX iOS native libraries were not found at '$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(BgfXnaIosNativeTarget)' or matching Release fallback. Build them on macOS with: dotnet run ./scripts/build-bgfx.cs -- --target $(BgfXnaIosNativeTarget) --configuration Release --source-root native-src --skip-clone" />
+  </Target>
+
+  <Target Name="BgfXnaValidateIosNativeBgfx"
+          BeforeTargets="Build"
+          Condition="'$(TargetFramework)' == 'net10.0-ios' and '$(MSBuildProjectName)' != 'BgfXna' and '$(DesignTimeBuild)' != 'true' and Exists('$(BgfXnaIosNativeRuntimeDirectory)')">
+    <ItemGroup>
+      <_BgfXnaIosBgfxArchive Include="$(BgfXnaIosNativeRuntimeDirectory)\*bgfx*.a" />
+      <_BgfXnaIosBimgArchive Include="$(BgfXnaIosNativeRuntimeDirectory)\*bimg*.a" />
+      <_BgfXnaIosBxArchive Include="$(BgfXnaIosNativeRuntimeDirectory)\*bx*.a" />
+    </ItemGroup>
+    <Error Condition="'@(_BgfXnaIosBgfxArchive)' == ''" Text="No BGFX iOS bgfx archive was found in '$(BgfXnaIosNativeRuntimeDirectory)'." />
+    <Error Condition="'@(_BgfXnaIosBimgArchive)' == ''" Text="No BGFX iOS bimg archive was found in '$(BgfXnaIosNativeRuntimeDirectory)'." />
+    <Error Condition="'@(_BgfXnaIosBxArchive)' == ''" Text="No BGFX iOS bx archive was found in '$(BgfXnaIosNativeRuntimeDirectory)'." />
+  </Target>
+
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'BgfXna' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([System.String]::Copy('$(TargetFramework)').Contains('-android'))">
     <AndroidNativeLibrary Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-arm64\libbgfx*.so" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-arm64')">
       <Abi>arm64-v8a</Abi>

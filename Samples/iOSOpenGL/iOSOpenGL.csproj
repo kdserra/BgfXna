@@ -2,15 +2,32 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-ios</TargetFramework>
-    <SupportedOSPlatformVersion>12.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion>12.2</SupportedOSPlatformVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <DefineConstants>$(DefineConstants);SAMPLE_BACKEND_OPENGL</DefineConstants>
+    <DefineConstants>$(DefineConstants);SAMPLE_BACKEND_OPENGL;IOS_GAME_HOST</DefineConstants>
     <AssemblyName>BgfXna.Sample.iOSOpenGL</AssemblyName>
+    <ApplicationId>com.bgfxna.samples.iosopengl</ApplicationId>
+    <ApplicationTitle>BgfXna iOS OpenGL Sample</ApplicationTitle>
+    <ApplicationManifest>Info.plist</ApplicationManifest>
+    <BgfXnaIosNativeTarget Condition="'$(RuntimeIdentifier)' == '' or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('iossimulator-'))">ios-simulator</BgfXnaIosNativeTarget>
+    <BgfXnaIosNativeTarget Condition="'$(BgfXnaIosNativeTarget)' == ''">ios-arm64</BgfXnaIosNativeTarget>
+    <BgfXnaIosNativeRuntimeDirectory>$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(BgfXnaIosNativeTarget)</BgfXnaIosNativeRuntimeDirectory>
+    <BgfXnaIosNativeRuntimeDirectory Condition="!Exists('$(BgfXnaIosNativeRuntimeDirectory)') and Exists('$(BgfXnaNativeRuntimeRoot)Release\$(BgfXnaIosNativeTarget)')">$(BgfXnaNativeRuntimeRoot)Release\$(BgfXnaIosNativeTarget)</BgfXnaIosNativeRuntimeDirectory>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\BgfXna\BgfXna.csproj" />
     <Compile Include="..\Shared\*.cs" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <NativeReference Include="$(BgfXnaIosNativeRuntimeDirectory)\*.a" Condition="Exists('$(BgfXnaIosNativeRuntimeDirectory)')">
+      <Kind>Static</Kind>
+      <ForceLoad>true</ForceLoad>
+      <SmartLink>false</SmartLink>
+      <IsCxx>true</IsCxx>
+      <Frameworks>Metal QuartzCore UIKit Foundation CoreGraphics</Frameworks>
+    </NativeReference>
   </ItemGroup>
 </Project>

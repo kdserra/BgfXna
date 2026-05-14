@@ -13,6 +13,8 @@ internal static class Program
             await BrowserGameHost.RunAsync();
 #elif WINDOWS_DESKTOP_HOST
             WindowsGameHost.Run();
+#elif IOS_GAME_HOST
+            iOSGameHost.Run(args);
 #else
             using AutoPongGame game = new();
             game.Run();
@@ -22,6 +24,8 @@ internal static class Program
         {
 #if BROWSER_WEB_HOST
             BrowserDiagnostics.ShowManagedError(exception.ToString());
+#else
+            _ = exception;
 #endif
             throw;
         }

@@ -24,11 +24,7 @@ if (!Directory.Exists(bgfxPath))
     throw new InvalidOperationException($"BGFX source not found at {bgfxPath}. Run without --skip-clone or pass --source-root.");
 }
 
-string genie = Path.Combine(bxPath, "tools", "bin", "windows", "genie.exe");
-if (!File.Exists(genie))
-{
-    throw new InvalidOperationException($"GENie not found at {genie}. Make sure bx was cloned correctly.");
-}
+string genie = FindGenie(bxPath);
 
 if (options.IsAndroid)
 {
@@ -54,6 +50,21 @@ else if (options.IsBrowserWasm)
 
     CopyBuiltLibraries(
         FindWasmBuiltLibraries(Path.Combine(bgfxPath, ".build", "wasm", "bin"), options.Configuration),
+        outputRoot,
+        options.Configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase) ? "libbgfx_debug.a" : "libbgfx.a");
+}
+else if (options.IsIOS)
+{
+    string gcc = ToIosGcc(options.Target);
+    string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", $"gmake-{gcc}");
+    Run(genie, [$"--gcc={gcc}", "gmake"], bgfxPath);
+    string make = FindMake();
+    Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}"], bgfxPath);
+
+    IReadOnlyList<string> libraries = FindStaticBuiltLibraries(Path.Combine(bgfxPath, ".build", gcc, "bin"), options.Configuration);
+    ValidateBgfxC99Symbols(libraries);
+    CopyBuiltLibraries(
+        libraries,
         outputRoot,
         options.Configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase) ? "libbgfx_debug.a" : "libbgfx.a");
 }
@@ -98,7 +109,36 @@ static string ToAndroidTriple(string target) =>
         _ => throw new ArgumentException($"Target '{target}' is not an Android target."),
     };
 
+static string ToIosGcc(string target) =>
+    target switch
+    {
+        "ios-arm64" => "ios-arm64",
+        "ios-simulator" => "ios-simulator",
+        _ => throw new ArgumentException($"Target '{target}' is not an iOS target."),
+    };
+
 static string SourcePath([CallerFilePath] string path = "") => path;
+
+static string FindGenie(string bxPath)
+{
+    string[] candidates =
+    [
+        Path.Combine(bxPath, "tools", "bin", "windows", "genie.exe"),
+        Path.Combine(bxPath, "tools", "bin", "darwin", "genie"),
+        Path.Combine(bxPath, "tools", "bin", "linux", "genie"),
+        Path.Combine(bxPath, "tools", "bin", "freebsd", "genie"),
+    ];
+
+    foreach (string candidate in candidates)
+    {
+        if (File.Exists(candidate))
+        {
+            return candidate;
+        }
+    }
+
+    throw new InvalidOperationException($"GENie was not found under {Path.Combine(bxPath, "tools", "bin")}. Make sure bx was cloned correctly.");
+}
 
 void CloneIfMissing(string repositoryUrl, string targetPath)
 {
@@ -243,6 +283,9 @@ static IReadOnlyList<string> FindBuiltLibraries(string buildRoot, string configu
 }
 
 static IReadOnlyList<string> FindWasmBuiltLibraries(string buildRoot, string configuration)
+    => FindStaticBuiltLibraries(buildRoot, configuration);
+
+static IReadOnlyList<string> FindStaticBuiltLibraries(string buildRoot, string configuration)
 {
     if (!Directory.Exists(buildRoot))
     {
@@ -267,6 +310,31 @@ static IReadOnlyList<string> FindWasmBuiltLibraries(string buildRoot, string con
         .ToArray();
 
     return matching.Length == 0 ? all : matching;
+}
+
+static void ValidateBgfxC99Symbols(IReadOnlyList<string> libraries)
+{
+    string? bgfxArchive = libraries.FirstOrDefault(path =>
+        Path.GetFileNameWithoutExtension(path).Contains("bgfx", StringComparison.OrdinalIgnoreCase));
+
+    if (bgfxArchive is null)
+    {
+        throw new InvalidOperationException("The native build did not produce a bgfx static archive.");
+    }
+
+    string? nm = FindOnPath("nm") ?? FindOnPath("llvm-nm") ?? FindOnPath("llvm-nm.exe");
+    if (nm is null)
+    {
+        Console.WriteLine("warning: nm/llvm-nm was not found; skipping bgfx C99 symbol validation.");
+        return;
+    }
+
+    string symbols = Capture(nm, [bgfxArchive], Directory.GetCurrentDirectory());
+    if (!symbols.Contains("bgfx_alloc", StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException(
+            $"The bgfx archive '{bgfxArchive}' does not export bgfx C99 API symbols such as bgfx_alloc. Rebuild BGFX from a clean native-src/bgfx tree.");
+    }
 }
 
 static void CopyBuiltLibraries(IReadOnlyList<string> candidates, string outputRoot, string expectedName)
@@ -382,6 +450,7 @@ internal sealed record Options(string Configuration, string Platform, string Tar
 {
     public bool IsAndroid => Target.StartsWith("android-", StringComparison.OrdinalIgnoreCase);
     public bool IsBrowserWasm => Target.Equals("browser-wasm", StringComparison.OrdinalIgnoreCase);
+    public bool IsIOS => Target.StartsWith("ios-", StringComparison.OrdinalIgnoreCase);
 
     public static Options Parse(string[] args)
     {
@@ -429,7 +498,7 @@ internal sealed record Options(string Configuration, string Platform, string Tar
 
         Validate(configuration, ["Debug", "Release"], "configuration");
         Validate(platform, ["x64"], "platform");
-        Validate(target, ["win-x64", "android-arm", "android-arm64", "android-x86", "android-x64", "browser-wasm"], "target");
+        Validate(target, ["win-x64", "android-arm", "android-arm64", "android-x86", "android-x64", "browser-wasm", "ios-arm64", "ios-simulator"], "target");
         Validate(generator, ["vs2022", "vs2026"], "generator");
 
         return new Options(configuration, platform, target, sourceRoot, generator, skipClone);
@@ -464,7 +533,7 @@ internal sealed record Options(string Configuration, string Platform, string Tar
           -c, --configuration <Debug|Release>   Build configuration. Default: Debug
           -p, --platform <x64>                  Native platform. Default: x64
           -t, --target <target>                 Native target. Default: win-x64
-                                                Values: win-x64, android-arm, android-arm64, android-x86, android-x64, browser-wasm
+                                                Values: win-x64, android-arm, android-arm64, android-x86, android-x64, browser-wasm, ios-arm64, ios-simulator
           --source-root <path>                  bx/bimg/bgfx clone root. Default: .native-src
           --generator <vs2022|vs2026>           GENie generator. Default: vs2026
           --skip-clone                          Do not clone missing bx/bimg/bgfx repositories.
