@@ -85,6 +85,12 @@ jobs:
         if: matrix.target == 'browser-wasm'
         uses: emscripten-core/setup-emsdk@v11
 
+      - name: Install Linux Dependencies
+        if: startsWith(matrix.target, 'linux-')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libgl1-mesa-dev libxext-dev
+
       - name: Clean native-src
         shell: pwsh
         run: |
