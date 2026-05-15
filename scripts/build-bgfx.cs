@@ -22,6 +22,28 @@ if (!options.SkipClone)
     CloneIfMissing("https://github.com/bkaradzic/bgfx.git", bgfxPath);
 }
 
+if (options.Target.EndsWith("-x86", StringComparison.OrdinalIgnoreCase))
+{
+    string astcPath = Path.Combine(bimgPath, "3rdparty", "astc-encoder", "source", "astcenc_vecmathlib_sse_4.h");
+    if (File.Exists(astcPath))
+    {
+        Console.WriteLine("Patching astcenc_vecmathlib_sse_4.h for x86...");
+        string content = File.ReadAllText(astcPath);
+        string search = "return static_cast<int>(_mm_popcnt_u64(v));";
+        string replace = "return static_cast<int>(_mm_popcnt_u32((unsigned int)v) + _mm_popcnt_u32((unsigned int)(v >> 32)));";
+        if (content.Contains(search))
+        {
+            content = content.Replace(search, replace);
+            File.WriteAllText(astcPath, content);
+            Console.WriteLine("Patch applied successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Warning: Could not find target code in astcenc_vecmathlib_sse_4.h to patch.");
+        }
+    }
+}
+
 if (!Directory.Exists(bgfxPath))
 {
     throw new InvalidOperationException($"BGFX source not found at {bgfxPath}. Run without --skip-clone or pass --source-root.");
@@ -99,8 +121,9 @@ else if (options.IsIOS)
 else if (options.IsDesktopUnix)
 {
     EnsureDesktopUnixTargetCanBuild(options.Target);
-    string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", "gmake");
-    Run(genie, ["--with-shared-lib", "gmake"], bgfxPath);
+    string gccFlavor = options.Target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase) ? "osx" : "linux-gcc";
+    string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", $"gmake-{gccFlavor}");
+    Run(genie, ["--with-shared-lib", $"--gcc={gccFlavor}", "gmake"], bgfxPath);
     string make = FindMake();
     Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}", "bgfx-shared-lib"], bgfxPath);
 
@@ -528,11 +551,40 @@ static string FindGenie(string bxPath)
             ]
             :
             [
+                Path.Combine(bxPath, "tools", "genie", "genie"), // Built from source
                 Path.Combine(bxPath, "tools", "bin", "windows", "genie.exe"),
                 Path.Combine(bxPath, "tools", "bin", "darwin", "genie"),
                 Path.Combine(bxPath, "tools", "bin", "linux", "genie"),
                 Path.Combine(bxPath, "tools", "bin", "freebsd", "genie"),
             ];
+
+    if (OperatingSystem.IsLinux() && System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64)
+    {
+        string genieSourcePath = Path.Combine(bxPath, "tools", "genie");
+        if (Directory.Exists(genieSourcePath) && !File.Exists(candidates[0]))
+        {
+            Console.WriteLine("Linux Arm64 detected. Building GENie from source...");
+            try
+            {
+                var process = new System.Diagnostics.Process
+                {
+                    StartInfo = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "make",
+                        WorkingDirectory = genieSourcePath,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                process.Start();
+                process.WaitForExit();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Warning: Failed to build GENie: {ex.Message}");
+            }
+        }
+    }
 
     foreach (string candidate in candidates)
     {
@@ -1001,18 +1053,37 @@ internal sealed record EmscriptenToolchain(string EmscriptenPath, string Emmake,
     {
         string toolsPath = Path.GetFullPath(Path.Combine(emscriptenPath, ".."));
         string sdkVersionPath = Path.GetFullPath(Path.Combine(toolsPath, ".."));
-        string sdkVersion = Path.GetFileName(sdkVersionPath);
         string sdkPackPath = Path.GetFullPath(Path.Combine(sdkVersionPath, ".."));
-        string packsRoot = Path.GetFullPath(Path.Combine(sdkPackPath, ".."));
         string sdkPackName = Path.GetFileName(sdkPackPath);
-        string emscriptenVersion = GetEmscriptenVersionFromPackName(sdkPackName);
-        string nodePackName = sdkPackName.Replace(".Sdk.", ".Node.", StringComparison.OrdinalIgnoreCase);
 
-        string llvmRoot = Path.Combine(toolsPath, "bin");
-        string binaryenRoot = toolsPath;
+        string emscriptenVersion;
+        string llvmRoot;
+        string binaryenRoot;
+        string nodePath;
+        string packsRoot = Path.GetFullPath(Path.Combine(sdkPackPath, ".."));
+
+        if (sdkPackName != null && sdkPackName.StartsWith("Microsoft.NET.Runtime.Emscripten.", StringComparison.OrdinalIgnoreCase))
+        {
+            // .NET Pack structure
+            string sdkVersion = Path.GetFileName(sdkVersionPath);
+            emscriptenVersion = GetEmscriptenVersionFromPackName(sdkPackName);
+            string nodePackName = sdkPackName.Replace(".Sdk.", ".Node.", StringComparison.OrdinalIgnoreCase);
+            
+            llvmRoot = Path.Combine(toolsPath, "bin");
+            binaryenRoot = toolsPath;
+            nodePath = Path.Combine(packsRoot, nodePackName, sdkVersion, "tools", "bin", OperatingSystem.IsWindows() ? "node.exe" : "node");
+        }
+        else
+        {
+            // Standard EMSDK structure
+            emscriptenVersion = GetEmscriptenVersionFromEmcc(emscriptenPath);
+            llvmRoot = Path.Combine(toolsPath, "bin"); // upstream/bin
+            binaryenRoot = toolsPath; // upstream
+            nodePath = FindOnPath("node") ?? (OperatingSystem.IsWindows() ? "node.exe" : "node");
+        }
+
         string cacheRoot = Path.Combine(Directory.GetCurrentDirectory(), "native", "bgfx", "obj", "emscripten-cache");
-        string nodePath = Path.Combine(packsRoot, nodePackName, sdkVersion, "tools", "bin", OperatingSystem.IsWindows() ? "node.exe" : "node");
-        string nodeDirectory = Path.GetDirectoryName(nodePath)!;
+        string nodeDirectory = Path.GetDirectoryName(nodePath) ?? "";
 
         if (!File.Exists(Path.Combine(llvmRoot, OperatingSystem.IsWindows() ? "clang.exe" : "clang")))
         {
@@ -1024,7 +1095,7 @@ internal sealed record EmscriptenToolchain(string EmscriptenPath, string Emmake,
             throw new InvalidOperationException($"Emscripten Binaryen tools were not found at {binaryenRoot}.");
         }
 
-        if (!File.Exists(nodePath))
+        if (nodePath != "node" && !File.Exists(nodePath))
         {
             throw new InvalidOperationException($"Emscripten Node.js runtime was not found at {nodePath}.");
         }
@@ -1032,13 +1103,17 @@ internal sealed record EmscriptenToolchain(string EmscriptenPath, string Emmake,
         Directory.CreateDirectory(cacheRoot);
 
         string? existingPath = System.Environment.GetEnvironmentVariable("PATH");
-        string[] pathEntries = [emscriptenPath, llvmRoot, nodeDirectory];
+        string[] pathEntries = string.IsNullOrEmpty(nodeDirectory) 
+            ? [emscriptenPath, llvmRoot] 
+            : [emscriptenPath, llvmRoot, nodeDirectory];
+            
         string[] versionParts = emscriptenVersion.Split('.');
         string emscriptenVersionDefines = string.Join(' ', [
             $"-D__EMSCRIPTEN_MAJOR__={versionParts[0]}",
             $"-D__EMSCRIPTEN_MINOR__={versionParts[1]}",
             $"-D__EMSCRIPTEN_TINY__={versionParts[2]}",
         ]);
+        
         Dictionary<string, string> environment = new(StringComparer.OrdinalIgnoreCase)
         {
             ["EMSCRIPTEN"] = emscriptenPath,
@@ -1056,6 +1131,45 @@ internal sealed record EmscriptenToolchain(string EmscriptenPath, string Emmake,
         };
 
         return new EmscriptenToolchain(emscriptenPath, emmake, environment);
+    }
+
+    private static string GetEmscriptenVersionFromEmcc(string emscriptenPath)
+    {
+        string versionFile = Path.Combine(emscriptenPath, "emscripten-version.txt");
+        if (File.Exists(versionFile))
+        {
+            return File.ReadAllText(versionFile).Trim().Trim('"');
+        }
+
+        try
+        {
+            var process = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = Path.Combine(emscriptenPath, OperatingSystem.IsWindows() ? "emcc.bat" : "emcc"),
+                    Arguments = "--version",
+                    RedirectStandardOutput = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+            process.Start();
+            string output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+
+            var match = System.Text.RegularExpressions.Regex.Match(output, @"\d+\.\d+\.\d+");
+            if (match.Success)
+            {
+                return match.Value;
+            }
+        }
+        catch
+        {
+            // Ignore
+        }
+
+        throw new InvalidOperationException("Could not determine Emscripten version.");
     }
 
     private static string GetEmscriptenVersionFromPackName(string sdkPackName)
