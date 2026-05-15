@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: 'Comma-separated list of platforms to build or "all". Supported: win-x64, linux-x64, osx-x64, osx-arm64'
+        description: 'Comma-separated list of platforms to build or "all". Supported: win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64'
         default: 'all'
         required: false
       configurations:
@@ -22,7 +22,9 @@ jobs:
         run: |
           full_mapping='{
             "win-x64": {"runner": "windows-latest"},
+            "win-arm64": {"runner": "windows-latest"},
             "linux-x64": {"runner": "ubuntu-latest"},
+            "linux-arm64": {"runner": "ubuntu-24.04-arm"},
             "osx-x64": {"runner": "macos-latest"},
             "osx-arm64": {"runner": "macos-latest"}
           }'
@@ -83,6 +85,8 @@ jobs:
             CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_OSX_ARCHITECTURES=arm64"
           elif [[ "${{ matrix.target }}" == "osx-x64" ]]; then
             CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_OSX_ARCHITECTURES=x86_64"
+          elif [[ "${{ matrix.target }}" == "win-arm64" ]]; then
+            CMAKE_ARGS="$CMAKE_ARGS -A ARM64"
           fi
           
           cmake -S sdl2-src -B build $CMAKE_ARGS -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
