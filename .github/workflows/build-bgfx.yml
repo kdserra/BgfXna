@@ -105,6 +105,7 @@ jobs:
           }
 
       - name: Build
+        shell: bash
         run: |
           USE_DOCKER=""
           if [[ "${{ matrix.target }}" == linux-* ]]; then
