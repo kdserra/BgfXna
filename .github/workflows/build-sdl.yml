@@ -100,7 +100,7 @@ jobs:
         run: |
           mkdir -p dist
           # Find all binaries and copy them flatly into dist/
-          find build -type f \( -name "*.dll" -o -name "*.so" -o -name "*.dylib" \) -exec cp {} dist/ \;
+          find build -type f \( -name "*.dll" -o -name "*.so*" -o -name "*.dylib" \) -exec cp {} dist/ \;
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
