@@ -22,8 +22,8 @@ jobs:
         run: |
           full_mapping='{
             "win-x64": {"runner": "windows-latest"},
-            "linux-x64": {"runner": "ubuntu-latest", "container": "ubuntu:18.04"},
-            "linux-arm64": {"runner": "ubuntu-24.04-arm", "container": "ubuntu:18.04"},
+            "linux-x64": {"runner": "ubuntu-latest"},
+            "linux-arm64": {"runner": "ubuntu-24.04-arm"},
             "osx-x64": {"runner": "macos-latest"},
             "osx-arm64": {"runner": "macos-latest"},
             "android-arm": {"runner": "ubuntu-latest"},
@@ -105,7 +105,12 @@ jobs:
           }
 
       - name: Build
-        run: dotnet run scripts/build-bgfx.cs -- --target ${{ matrix.target }} --configuration ${{ matrix.configuration }} --source-root native-src --generator vs2022
+        run: |
+          USE_DOCKER=""
+          if [[ "${{ matrix.target }}" == linux-* ]]; then
+            USE_DOCKER="--use-docker"
+          fi
+          dotnet run scripts/build-bgfx.cs -- --target ${{ matrix.target }} --configuration ${{ matrix.configuration }} --source-root native-src --generator vs2022 $USE_DOCKER
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

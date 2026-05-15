@@ -161,7 +161,24 @@ else if (options.IsDesktopUnix)
             ["LDFLAGS"] = "-arch x86_64"
         };
     }
-    Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}", "bgfx-shared-lib"], bgfxPath, environment);
+    if (options.UseDocker && options.Target.StartsWith("linux-"))
+    {
+        string workspaceRoot = Path.GetFullPath(Path.Combine(bgfxPath, "../.."));
+        string relativeProjectDir = Path.GetRelativePath(bgfxPath, projectDirectory);
+        Console.WriteLine($"Running make inside Docker (ubuntu:18.04) for target {options.Target}...");
+        Run("docker", [
+            "run", "--rm", 
+            "-v", $"{workspaceRoot}:{workspaceRoot}", 
+            "-w", bgfxPath, 
+            "ubuntu:18.04", 
+            "sh", "-c", 
+            $"apt-get update && apt-get install -y build-essential libx11-dev libgl1-mesa-dev libxext-dev && make -R -C {relativeProjectDir} config={options.Configuration.ToLowerInvariant()} bgfx-shared-lib"
+        ], bgfxPath);
+    }
+    else
+    {
+        Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}", "bgfx-shared-lib"], bgfxPath, environment);
+    }
 
     string extension = options.Target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase) ? ".dylib" : ".so";
     string expectedName = options.Configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase)
@@ -1031,7 +1048,7 @@ internal sealed record IosToolchain(
     string CompilerFlags,
     string LinkerFlags);
 
-internal sealed record Options(string Configuration, string Platform, string Target, string SourceRoot, string Generator, bool SkipClone)
+internal sealed record Options(string Configuration, string Platform, string Target, string SourceRoot, string Generator, bool SkipClone, bool UseDocker)
 {
     public bool IsAndroid => Target.StartsWith("android-", StringComparison.OrdinalIgnoreCase);
     public bool IsAndroidVulkan => Target.StartsWith("android-vulkan-", StringComparison.OrdinalIgnoreCase);
@@ -1048,6 +1065,7 @@ internal sealed record Options(string Configuration, string Platform, string Tar
         string sourceRoot = ".native-src";
         string generator = "vs2026";
         bool skipClone = false;
+        bool useDocker = false;
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -1075,6 +1093,9 @@ internal sealed record Options(string Configuration, string Platform, string Tar
                 case "--skip-clone":
                     skipClone = true;
                     break;
+                case "--use-docker":
+                    useDocker = true;
+                    break;
                 case "-h":
                 case "--help":
                     PrintUsageAndExit();
@@ -1089,7 +1110,7 @@ internal sealed record Options(string Configuration, string Platform, string Tar
         Validate(target, ["win-x64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64", "android-arm", "android-arm64", "android-x86", "android-x64", "android-vulkan-arm", "android-vulkan-arm64", "android-vulkan-x86", "android-vulkan-x64", "browser-wasm", "ios-arm64", "ios-simulator"], "target");
         Validate(generator, ["vs2022", "vs2026"], "generator");
 
-        return new Options(configuration, platform, target, sourceRoot, generator, skipClone);
+        return new Options(configuration, platform, target, sourceRoot, generator, skipClone, useDocker);
     }
 
     private static string RequireValue(string[] args, ref int index, string option)
