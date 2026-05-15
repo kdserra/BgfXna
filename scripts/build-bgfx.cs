@@ -121,9 +121,17 @@ else if (options.IsIOS)
 else if (options.IsDesktopUnix)
 {
     EnsureDesktopUnixTargetCanBuild(options.Target);
-    string gccFlavor = options.Target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase) ? "osx" : "linux-gcc";
-    string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", $"gmake-{gccFlavor}");
-    Run(genie, ["--with-shared-lib", $"--gcc={gccFlavor}", "gmake"], bgfxPath);
+    bool isOsx = options.Target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase);
+    string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", isOsx ? "gmake" : "gmake-linux-gcc");
+    
+    List<string> genieArgs = ["--with-shared-lib"];
+    if (!isOsx)
+    {
+        genieArgs.Add("--gcc=linux-gcc");
+    }
+    genieArgs.Add("gmake");
+    
+    Run(genie, genieArgs.ToArray(), bgfxPath);
     string make = FindMake();
     Dictionary<string, string>? environment = null;
     if (options.Target == "osx-x64" && System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64)
