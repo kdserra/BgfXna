@@ -68,6 +68,28 @@
     <Error Condition="'@(_BgfXnaIosBxArchive)' == ''" Text="No BGFX iOS bx archive was found in '$(BgfXnaIosNativeRuntimeDirectory)'." />
   </Target>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-ios' and '$(MSBuildProjectName)' != 'BgfXna' and Exists('$(BgfXnaIosNativeRuntimeDirectory)')">
+    <NativeReference Include="$(BgfXnaIosNativeRuntimeDirectory)\libbgfx*.a">
+      <Kind>Static</Kind>
+      <ForceLoad>true</ForceLoad>
+      <SmartLink>false</SmartLink>
+      <IsCxx>true</IsCxx>
+      <Frameworks>Metal QuartzCore UIKit Foundation CoreGraphics</Frameworks>
+    </NativeReference>
+    <NativeReference Include="$(BgfXnaIosNativeRuntimeDirectory)\libbimg*.a">
+      <Kind>Static</Kind>
+      <ForceLoad>true</ForceLoad>
+      <SmartLink>false</SmartLink>
+      <IsCxx>true</IsCxx>
+    </NativeReference>
+    <NativeReference Include="$(BgfXnaIosNativeRuntimeDirectory)\libbx*.a">
+      <Kind>Static</Kind>
+      <ForceLoad>true</ForceLoad>
+      <SmartLink>false</SmartLink>
+      <IsCxx>true</IsCxx>
+    </NativeReference>
+  </ItemGroup>
+
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'BgfXna' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([System.String]::Copy('$(TargetFramework)').Contains('-android'))">
     <AndroidNativeLibrary Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-arm64\libbgfx*.so" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)\android-arm64')">
       <Abi>arm64-v8a</Abi>
