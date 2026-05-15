@@ -59,6 +59,7 @@ else if (options.IsIOS)
     string gcc = ToIosGcc(options.Target);
     string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", $"gmake-{gcc}");
     IosToolchain iosToolchain = FindIosToolchain(options.Target);
+    PatchMetalCppForIos(bgfxPath);
     Run(genie, [$"--gcc={gcc}", "gmake"], bgfxPath);
     PatchIosGeneratedMakefiles(projectDirectory, iosToolchain);
     CleanIosBuildOutput(bgfxPath, gcc, options.Configuration);
@@ -223,6 +224,7 @@ static void PatchIosGeneratedMakefiles(string projectDirectory, IosToolchain too
         patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_OPENGLES=0");
         patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_VULKAN=0");
         patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_RENDERER_WEBGPU=0");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFXNA_FORCE_METALCPP_DLSYM_CONSTANTS=1");
         patched = AddMakefileFlag(patched, "ALL_ASMFLAGS", $"-target {toolchain.TargetTriple}");
         patched = AddMakefileFlag(patched, "ALL_CFLAGS", $"-target {toolchain.TargetTriple}");
         patched = AddMakefileFlag(patched, "ALL_CXXFLAGS", $"-target {toolchain.TargetTriple}");
@@ -232,6 +234,23 @@ static void PatchIosGeneratedMakefiles(string projectDirectory, IosToolchain too
         {
             File.WriteAllText(file, patched);
         }
+    }
+}
+
+static void PatchMetalCppForIos(string bgfxPath)
+{
+    string metalHeader = Path.Combine(bgfxPath, "3rdparty", "metal-cpp", "metal.hpp");
+    if (!File.Exists(metalHeader))
+    {
+        return;
+    }
+
+    const string original = "#elif defined(__MAC_26_0) || defined(__IPHONE_26_0) || defined(__TVOS_26_0)";
+    const string patched = "#elif !defined(BGFXNA_FORCE_METALCPP_DLSYM_CONSTANTS) && (defined(__MAC_26_0) || defined(__IPHONE_26_0) || defined(__TVOS_26_0))";
+    string contents = File.ReadAllText(metalHeader);
+    if (contents.Contains(original, StringComparison.Ordinal))
+    {
+        File.WriteAllText(metalHeader, contents.Replace(original, patched, StringComparison.Ordinal));
     }
 }
 
