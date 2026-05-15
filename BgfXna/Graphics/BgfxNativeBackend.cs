@@ -540,8 +540,15 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
         }
     }
 
-    private static uint ToRgba(Color color) =>
-        (uint)(color.R << 24 | color.G << 16 | color.B << 8 | color.A);
+    private uint ToRgba(Color color)
+    {
+        if (_rendererType == bgfx.RendererType.Vulkan)
+        {
+            // Swap Red and Blue channels for Vulkan to fix orange background bug
+            return (uint)(color.B << 24 | color.G << 16 | color.R << 8 | color.A);
+        }
+        return (uint)(color.R << 24 | color.G << 16 | color.B << 8 | color.A);
+    }
 
     private BgfxHandle AllocateHandle() => new(_nextHandle++);
 
