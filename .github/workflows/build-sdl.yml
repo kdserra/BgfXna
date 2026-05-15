@@ -93,7 +93,7 @@ jobs:
       - name: Configure CMake
         shell: bash
         run: |
-          if [[ "${{ matrix.target }}" == "emscripten" ]]; then
+          if [[ "${{ matrix.target }}" == "emscripten" ]] || [[ "${{ matrix.target }}" == "visionos" ]]; then
             CMAKE_ARGS="-DSDL_STATIC=ON -DSDL_SHARED=OFF"
           else
             CMAKE_ARGS="-DSDL_STATIC=OFF -DSDL_SHARED=ON"
