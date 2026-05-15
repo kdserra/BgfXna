@@ -21,19 +21,23 @@ jobs:
     steps:
       - id: parse
         run: |
-          targets_input="${{ github.event.inputs.targets }}"
+          targets_input="${{ inputs.targets }}"
+          echo "Raw targets input: $targets_input"
           if [ "$targets_input" = "all" ] || [ -z "$targets_input" ]; then
             targets='["win-x64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64", "android-arm", "android-arm64", "android-x86", "android-x64", "android-vulkan-arm", "android-vulkan-arm64", "android-vulkan-x86", "android-vulkan-x64", "browser-wasm", "ios-arm64", "ios-simulator"]'
           else
             targets=$(echo "$targets_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
           fi
+          echo "Parsed targets: $targets"
           
-          configs_input="${{ github.event.inputs.configurations }}"
+          configs_input="${{ inputs.configurations }}"
+          echo "Raw configs input: $configs_input"
           if [ "$configs_input" = "all" ] || [ -z "$configs_input" ]; then
             configs='["Debug", "Release"]'
           else
             configs=$(echo "$configs_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
           fi
+          echo "Parsed configs: $configs"
           
           echo "targets=$targets" >> $GITHUB_OUTPUT
           echo "configurations=$configs" >> $GITHUB_OUTPUT
