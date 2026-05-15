@@ -93,7 +93,11 @@ jobs:
       - name: Configure CMake
         shell: bash
         run: |
-          CMAKE_ARGS="-DSDL_STATIC=OFF -DSDL_SHARED=ON"
+          if [[ "${{ matrix.target }}" == "emscripten" ]]; then
+            CMAKE_ARGS="-DSDL_STATIC=ON -DSDL_SHARED=OFF"
+          else
+            CMAKE_ARGS="-DSDL_STATIC=OFF -DSDL_SHARED=ON"
+          fi
           
           if [[ "${{ matrix.target }}" == "osx-arm64" ]]; then
             CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_OSX_ARCHITECTURES=arm64"
@@ -132,7 +136,7 @@ jobs:
         run: |
           mkdir -p dist
           # Find all binaries and copy them flatly into dist/
-          find build -type f \( -name "*.dll" -o -name "*.so*" -o -name "*.dylib" -o -name "*.js" -o -name "*.wasm" \) -exec cp {} dist/ \;
+          find build -type f \( -name "*.dll" -o -name "*.so*" -o -name "*.dylib" -o -name "*.js" -o -name "*.wasm" -o -name "*.a" \) -exec cp {} dist/ \;
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
