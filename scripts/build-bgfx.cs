@@ -96,6 +96,23 @@ else if (options.IsIOS)
         outputRoot,
         options.Configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase) ? "libbgfx_debug.a" : "libbgfx.a");
 }
+else if (options.IsDesktopUnix)
+{
+    EnsureDesktopUnixTargetCanBuild(options.Target);
+    string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", "gmake");
+    Run(genie, ["--with-shared-lib", "gmake"], bgfxPath);
+    string make = FindMake();
+    Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}", "bgfx-shared-lib"], bgfxPath);
+
+    string extension = options.Target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase) ? ".dylib" : ".so";
+    string expectedName = options.Configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase)
+        ? $"libbgfx_debug{extension}"
+        : $"libbgfx{extension}";
+    CopyBuiltLibraries(
+        FindBuiltLibraries(Path.Combine(bgfxPath, ".build"), options.Configuration, extension),
+        outputRoot,
+        expectedName);
+}
 else
 {
     Run(genie, ["--with-shared-lib", options.Generator], bgfxPath);
@@ -338,6 +355,25 @@ static string ToIosGcc(string target) =>
         "ios-simulator" => "ios-simulator",
         _ => throw new ArgumentException($"Target '{target}' is not an iOS target."),
     };
+
+static void EnsureDesktopUnixTargetCanBuild(string target)
+{
+    if (target.StartsWith("linux-", StringComparison.OrdinalIgnoreCase) && !OperatingSystem.IsLinux())
+    {
+        throw new InvalidOperationException($"{target} BGFX native libraries must be built on Linux.");
+    }
+
+    if (target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase) && !OperatingSystem.IsMacOS())
+    {
+        throw new InvalidOperationException($"{target} BGFX native libraries must be built on macOS.");
+    }
+
+    string expectedArchitecture = target.EndsWith("-arm64", StringComparison.OrdinalIgnoreCase) ? "Arm64" : "X64";
+    if (!RuntimeInformation.ProcessArchitecture.ToString().Equals(expectedArchitecture, StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException($"{target} BGFX native libraries must be built on a {expectedArchitecture} host.");
+    }
+}
 
 static IosToolchain FindIosToolchain(string target)
 {
@@ -863,6 +899,8 @@ internal sealed record Options(string Configuration, string Platform, string Tar
     public bool IsAndroidVulkan => Target.StartsWith("android-vulkan-", StringComparison.OrdinalIgnoreCase);
     public bool IsBrowserWasm => Target.Equals("browser-wasm", StringComparison.OrdinalIgnoreCase);
     public bool IsIOS => Target.StartsWith("ios-", StringComparison.OrdinalIgnoreCase);
+    public bool IsDesktopUnix => Target.StartsWith("linux-", StringComparison.OrdinalIgnoreCase)
+        || Target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase);
 
     public static Options Parse(string[] args)
     {
@@ -910,7 +948,7 @@ internal sealed record Options(string Configuration, string Platform, string Tar
 
         Validate(configuration, ["Debug", "Release"], "configuration");
         Validate(platform, ["x64"], "platform");
-        Validate(target, ["win-x64", "android-arm", "android-arm64", "android-x86", "android-x64", "android-vulkan-arm", "android-vulkan-arm64", "android-vulkan-x86", "android-vulkan-x64", "browser-wasm", "ios-arm64", "ios-simulator"], "target");
+        Validate(target, ["win-x64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64", "android-arm", "android-arm64", "android-x86", "android-x64", "android-vulkan-arm", "android-vulkan-arm64", "android-vulkan-x86", "android-vulkan-x64", "browser-wasm", "ios-arm64", "ios-simulator"], "target");
         Validate(generator, ["vs2022", "vs2026"], "generator");
 
         return new Options(configuration, platform, target, sourceRoot, generator, skipClone);
@@ -945,7 +983,8 @@ internal sealed record Options(string Configuration, string Platform, string Tar
           -c, --configuration <Debug|Release>   Build configuration. Default: Debug
           -p, --platform <x64>                  Native platform. Default: x64
           -t, --target <target>                 Native target. Default: win-x64
-                                                Values: win-x64, android-arm, android-arm64, android-x86, android-x64,
+                                                Values: win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64,
+                                                        android-arm, android-arm64, android-x86, android-x64,
                                                         android-vulkan-arm, android-vulkan-arm64, android-vulkan-x86, android-vulkan-x64,
                                                         browser-wasm, ios-arm64, ios-simulator
           --source-root <path>                  bx/bimg/bgfx clone root. Default: .native-src

@@ -23,6 +23,7 @@ public sealed class GraphicsDeviceManager : IDisposable, IGraphicsDeviceManager,
     public bool SynchronizeWithVerticalRetrace { get; set; } = true;
     public DisplayOrientation SupportedOrientations { get; set; } = DisplayOrientation.Default;
     public GraphicsBackend PreferredBackend { get; set; } = GraphicsBackend.Auto;
+    public IntPtr NativeDisplayHandle { get; set; }
     public IntPtr NativeWindowHandle { get; set; }
     public GraphicsDevice GraphicsDevice
     {
@@ -85,6 +86,7 @@ public sealed class GraphicsDeviceManager : IDisposable, IGraphicsDeviceManager,
                 BackBufferFormat = PreferredBackBufferFormat,
                 DepthStencilFormat = PreferredDepthStencilFormat,
                 IsFullScreen = IsFullScreen,
+                DeviceDisplayHandle = NativeDisplayHandle,
                 DeviceWindowHandle = NativeWindowHandle,
                 PresentationInterval = SynchronizeWithVerticalRetrace ? PresentInterval.One : PresentInterval.Immediate,
                 MultiSampleCount = PreferMultiSampling ? 4 : 0
@@ -100,6 +102,7 @@ public sealed class GraphicsDeviceManager : IDisposable, IGraphicsDeviceManager,
             BackBufferHeight = presentation.BackBufferHeight,
             BackBufferFormat = presentation.BackBufferFormat,
             DepthStencilFormat = presentation.DepthStencilFormat,
+            NativeDisplayHandle = presentation.DeviceDisplayHandle,
             NativeWindowHandle = presentation.DeviceWindowHandle,
             VSync = presentation.PresentationInterval != PresentInterval.Immediate
         });

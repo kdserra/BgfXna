@@ -7,7 +7,7 @@ Projects:
 - `WindowsDX11`: Direct3D 11 for Windows
 - `WindowsDX12`: Direct3D 12 for Windows
 - `BrowserWebApp`: WebGL/WebGPU for Browser
-- `DesktopOpenGL`: OpenGL for Windows, MacOS, and Linux
+- `DesktopOpenGL`: OpenGL for Windows and Linux. The current BGFX source tree does not expose a macOS OpenGL renderer/context path; use `MacMetal` on macOS.
 - `DesktopVulkan`: Vulkan for Windows and Linux
 - `MacMetal`: Metal for macOS
 - `iOSMetal`: Metal for iOS

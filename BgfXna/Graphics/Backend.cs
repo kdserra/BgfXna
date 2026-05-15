@@ -12,6 +12,7 @@ public readonly record struct BgfxHandle(ushort Id)
 public sealed class GraphicsDeviceOptions
 {
     public GraphicsBackend Backend { get; init; } = GraphicsBackend.Auto;
+    public IntPtr NativeDisplayHandle { get; init; }
     public IntPtr NativeWindowHandle { get; init; }
     public int BackBufferWidth { get; init; } = 1280;
     public int BackBufferHeight { get; init; } = 720;

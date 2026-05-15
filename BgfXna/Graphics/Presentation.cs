@@ -8,6 +8,7 @@ public sealed class PresentationParameters
     public int BackBufferHeight { get; set; } = 720;
     public SurfaceFormat BackBufferFormat { get; set; } = SurfaceFormat.Color;
     public DepthFormat DepthStencilFormat { get; set; } = DepthFormat.Depth24Stencil8;
+    public IntPtr DeviceDisplayHandle { get; set; }
     public IntPtr DeviceWindowHandle { get; set; }
     public bool IsFullScreen { get; set; }
     public int MultiSampleCount { get; set; }

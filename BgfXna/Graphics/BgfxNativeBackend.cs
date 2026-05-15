@@ -63,6 +63,11 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             bgfx.init_ctor(&init);
             GraphicsBackend backend = NormalizeBackend(options.Backend);
             init.type = ToBgfxRenderer(backend);
+            if (options.NativeDisplayHandle != IntPtr.Zero)
+            {
+                init.platformData.ndt = options.NativeDisplayHandle.ToPointer();
+            }
+
             if (options.NativeWindowHandle != IntPtr.Zero)
             {
                 init.platformData.nwh = options.NativeWindowHandle.ToPointer();

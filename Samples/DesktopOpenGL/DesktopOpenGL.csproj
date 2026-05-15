@@ -13,8 +13,14 @@
     <DefineConstants>$(DefineConstants);WINDOWS_DESKTOP_HOST</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition="!($([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-')) or ('$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Windows'))))">
+  <PropertyGroup Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux-')) or ('$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('Linux')))">
     <OutputType>Exe</OutputType>
+    <DefineConstants>$(DefineConstants);LINUX_DESKTOP_HOST</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-')) or ('$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('OSX')))">
+    <OutputType>Exe</OutputType>
+    <DefineConstants>$(DefineConstants);MACOS_DESKTOP_OPENGL_HOST</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
