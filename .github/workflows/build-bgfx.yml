@@ -93,7 +93,7 @@ jobs:
           }
 
       - name: Build
-        run: dotnet run scripts/build-bgfx.cs -- --target ${{ matrix.target }} --configuration ${{ matrix.configuration }} --source-root native-src
+        run: dotnet run scripts/build-bgfx.cs -- --target ${{ matrix.target }} --configuration ${{ matrix.configuration }} --source-root native-src --generator vs2022
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
