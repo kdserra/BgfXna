@@ -125,7 +125,11 @@ jobs:
             CMAKE_ARGS="$CMAKE_ARGS -DSDL_GDK=ON"
           fi
           
-          cmake -S sdl-src -B build $CMAKE_ARGS -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+          GENERATOR_ARGS=""
+          if [[ "${{ matrix.target }}" == osx-* ]] || [[ "${{ matrix.target }}" == "ios-arm64" ]] || [[ "${{ matrix.target }}" == "tvos" ]] || [[ "${{ matrix.target }}" == "visionos" ]]; then
+            GENERATOR_ARGS="-G Xcode"
+          fi
+          
 
       - name: Build
         run: |
