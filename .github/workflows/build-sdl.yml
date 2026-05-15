@@ -133,7 +133,7 @@ jobs:
           echo "tag_name=${tag_name}" >> $GITHUB_OUTPUT
           
           echo "body<<EOF" >> $GITHUB_OUTPUT
-          echo "This release contains the native dependencies for SDL2." >> $GITHUB_OUTPUT
+          echo "This release contains the native dependencies for SDL3." >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "Build Number: ${{ github.run_number }}" >> $GITHUB_OUTPUT
           echo "Date: ${date_human}" >> $GITHUB_OUTPUT
@@ -142,7 +142,7 @@ jobs:
       - name: Zip Artifacts
         run: |
           cd artifacts
-          for d in sdl2-*; do
+          for d in sdl3-*; do
             if [ -d "$d" ]; then
               zip -r "${d}.zip" "$d"
             fi
