@@ -21,22 +21,22 @@ jobs:
       - id: parse
         run: |
           full_mapping='{
-            "win-x64": "windows-latest",
-            "linux-x64": "ubuntu-latest",
-            "linux-arm64": "ubuntu-24.04-arm",
-            "osx-x64": "macos-latest",
-            "osx-arm64": "macos-latest",
-            "android-arm": "ubuntu-latest",
-            "android-arm64": "ubuntu-latest",
-            "android-x86": "ubuntu-latest",
-            "android-x64": "ubuntu-latest",
-            "android-vulkan-arm": "ubuntu-latest",
-            "android-vulkan-arm64": "ubuntu-latest",
-            "android-vulkan-x86": "ubuntu-latest",
-            "android-vulkan-x64": "ubuntu-latest",
-            "browser-wasm": "ubuntu-latest",
-            "ios-arm64": "macos-latest",
-            "ios-simulator": "macos-latest"
+            "win-x64": {"runner": "windows-latest"},
+            "linux-x64": {"runner": "ubuntu-latest", "container": "ubuntu:18.04"},
+            "linux-arm64": {"runner": "ubuntu-24.04-arm", "container": "ubuntu:18.04"},
+            "osx-x64": {"runner": "macos-latest"},
+            "osx-arm64": {"runner": "macos-latest"},
+            "android-arm": {"runner": "ubuntu-latest"},
+            "android-arm64": {"runner": "ubuntu-latest"},
+            "android-x86": {"runner": "ubuntu-latest"},
+            "android-x64": {"runner": "ubuntu-latest"},
+            "android-vulkan-arm": {"runner": "ubuntu-latest"},
+            "android-vulkan-arm64": {"runner": "ubuntu-latest"},
+            "android-vulkan-x86": {"runner": "ubuntu-latest"},
+            "android-vulkan-x64": {"runner": "ubuntu-latest"},
+            "browser-wasm": {"runner": "ubuntu-latest"},
+            "ios-arm64": {"runner": "macos-latest"},
+            "ios-simulator": {"runner": "macos-latest"}
           }'
           
           targets_input="${{ inputs.targets }}"
@@ -57,7 +57,7 @@ jobs:
             [
               $targets[] as $t |
               $configs[] as $c |
-              {target: $t, configuration: $c, os: .[$t]}
+              {target: $t, configuration: $c, runner: .[$t].runner, container: .[$t].container}
             ]
           ')
           
@@ -66,7 +66,8 @@ jobs:
   build:
     name: Build ${{ matrix.target }} (${{ matrix.configuration }})
     needs: setup
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
     strategy:
       fail-fast: false
       matrix:
@@ -88,8 +89,13 @@ jobs:
       - name: Install Linux Dependencies
         if: startsWith(matrix.target, 'linux-')
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libx11-dev libgl1-mesa-dev libxext-dev
+          if command -v sudo >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y libx11-dev libgl1-mesa-dev libxext-dev
+          else
+            apt-get update
+            apt-get install -y libx11-dev libgl1-mesa-dev libxext-dev
+          fi
 
       - name: Clean native-src
         shell: pwsh
