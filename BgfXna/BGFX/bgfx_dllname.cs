@@ -28,9 +28,9 @@ namespace Bgfx
 #elif IOS
         const string DllName = "__Internal";
 #elif DEBUG
-        const string DllName = "bgfx_debug.dll";
+        const string DllName = "bgfx_debug";
 #else
-        const string DllName = "bgfx.dll";
+        const string DllName = "bgfx";
 #endif
     }
 }
