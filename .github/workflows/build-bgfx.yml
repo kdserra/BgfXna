@@ -112,6 +112,37 @@ jobs:
           fi
           dotnet run scripts/build-bgfx.cs -- --target ${{ matrix.target }} --configuration ${{ matrix.configuration }} --source-root native-src --generator vs2022 $USE_DOCKER
 
+      - name: Download SDL2 from Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p sdl_download
+          latest_tag=$(gh release list -L 20 | grep -o "sdl-deps-[0-9]*" | head -n 1)
+          
+          if [ -n "$latest_tag" ]; then
+            echo "Downloading SDL2 from release $latest_tag"
+            gh release download "$latest_tag" --pattern "sdl2-${{ matrix.target }}-${{ matrix.configuration }}.zip" --dir sdl_download || true
+            
+            if [ -f sdl_download/sdl2-${{ matrix.target }}-${{ matrix.configuration }}.zip ]; then
+              mkdir -p sdl_extracted
+              unzip -o sdl_download/sdl2-${{ matrix.target }}-${{ matrix.configuration }}.zip -d sdl_extracted
+              
+              # Determine target folder
+              TARGET_DIR="native/bgfx/bin/${{ matrix.configuration }}/${{ matrix.target }}"
+              mkdir -p "$TARGET_DIR"
+              
+              # Find and copy binaries
+              find sdl_extracted -type f \( -name "*.dll" -o -name "*.so" -o -name "*.dylib" \) -exec cp {} "$TARGET_DIR/" \;
+              
+              echo "Successfully integrated SDL2 into $TARGET_DIR"
+            else
+              echo "Warning: SDL2 asset for ${{ matrix.target }} not found in release $latest_tag."
+            fi
+          else
+            echo "Warning: No SDL2 release found matching 'sdl-deps-'."
+          fi
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
