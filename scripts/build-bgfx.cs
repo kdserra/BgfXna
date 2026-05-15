@@ -142,8 +142,12 @@ else if (options.IsDesktopUnix)
     string expectedName = options.Configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase)
         ? $"libbgfx_debug{extension}"
         : $"libbgfx{extension}";
+    var libraries = FindBuiltLibraries(Path.Combine(bgfxPath, ".build"), options.Configuration, extension);
+    Console.WriteLine($"Found {libraries.Count} built libraries for configuration {options.Configuration}:");
+    foreach (var l in libraries) Console.WriteLine($"  {l}");
+    
     CopyBuiltLibraries(
-        FindBuiltLibraries(Path.Combine(bgfxPath, ".build"), options.Configuration, extension),
+        libraries,
         outputRoot,
         expectedName);
 }
@@ -578,29 +582,53 @@ static string FindGenie(string bxPath)
 
     if (OperatingSystem.IsLinux() && System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64)
     {
-        string genieSourcePath = Path.Combine(bxPath, "tools", "genie");
-        if (Directory.Exists(genieSourcePath) && !File.Exists(candidates[0]))
+        string genieSourcePath = Path.Combine(bxPath, "..", "genie_src");
+        if (!Directory.Exists(genieSourcePath))
         {
-            Console.WriteLine("Linux Arm64 detected. Building GENie from source...");
+            Console.WriteLine("Linux Arm64 detected. Cloning GENie source...");
             try
             {
                 var process = new System.Diagnostics.Process
                 {
                     StartInfo = new System.Diagnostics.ProcessStartInfo
                     {
-                        FileName = "make",
-                        WorkingDirectory = genieSourcePath,
+                        FileName = "git",
+                        Arguments = $"clone https://github.com/bkaradzic/genie.git {genieSourcePath}",
                         UseShellExecute = false,
                         CreateNoWindow = true
                     }
                 };
                 process.Start();
                 process.WaitForExit();
+                
+                if (process.ExitCode == 0)
+                {
+                    Console.WriteLine("Building GENie from source...");
+                    var makeProcess = new System.Diagnostics.Process
+                    {
+                        StartInfo = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "make",
+                            WorkingDirectory = genieSourcePath,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        }
+                    };
+                    makeProcess.Start();
+                    makeProcess.WaitForExit();
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Warning: Failed to build GENie: {ex.Message}");
             }
+        }
+        
+        string builtGenie = Path.Combine(genieSourcePath, "bin", "linux", "genie");
+        if (File.Exists(builtGenie))
+        {
+            EnsureExecutable(builtGenie);
+            return builtGenie;
         }
     }
 
