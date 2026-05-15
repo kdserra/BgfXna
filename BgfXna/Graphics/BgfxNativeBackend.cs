@@ -41,8 +41,46 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
     public GraphicsBackend ActualBackend { get; private set; } = GraphicsBackend.Auto;
     public string ActualBackendName { get; private set; } = "Unknown";
 
+#if !NETSTANDARD
+    private static bool _resolverRegistered = false;
+    private static void RegisterDllImportResolver()
+    {
+        if (_resolverRegistered) return;
+        
+        System.Runtime.InteropServices.NativeLibrary.SetDllImportResolver(typeof(Bgfx.bgfx).Assembly, (libraryName, assembly, searchPath) =>
+        {
+            string os = System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows) ? "win" :
+                        System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) ? "linux" : "osx";
+            
+            string rid = $"{os}-x64"; 
+            string ext = os == "win" ? ".dll" : os == "linux" ? ".so" : ".dylib";
+            string prefix = os == "win" ? "" : "lib";
+            
+            string path = Path.Combine(AppContext.BaseDirectory, "runtimes", rid, "native", prefix + libraryName + ext);
+            
+            if (System.IO.File.Exists(path))
+            {
+                return System.Runtime.InteropServices.NativeLibrary.Load(path);
+            }
+            
+            if (libraryName == "bgfx_debug" && os == "win")
+            {
+                path = Path.Combine(AppContext.BaseDirectory, "runtimes", rid, "native", "bgfx_debug.dll");
+                if (System.IO.File.Exists(path)) return System.Runtime.InteropServices.NativeLibrary.Load(path);
+            }
+            
+            return IntPtr.Zero;
+        });
+        
+        _resolverRegistered = true;
+    }
+#endif
+
     public void Initialize(GraphicsDeviceOptions options)
     {
+#if !NETSTANDARD
+        RegisterDllImportResolver();
+#endif
         if (options.NativeWindowHandle == IntPtr.Zero && !IsBrowserRuntime() && options.Backend != GraphicsBackend.Noop)
         {
             throw new InvalidOperationException(
