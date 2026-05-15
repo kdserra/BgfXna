@@ -1191,6 +1191,20 @@ internal sealed record EmscriptenToolchain(string EmscriptenPath, string Emmake,
         return version;
     }
 
+    private static string? FindOnPath(string fileName)
+    {
+        string? path = System.Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrEmpty(path)) return null;
+
+        foreach (string directory in path.Split(Path.PathSeparator))
+        {
+            string fullPath = Path.Combine(directory, fileName);
+            if (File.Exists(fullPath)) return fullPath;
+        }
+
+        return null;
+    }
+
     private static string MergeFlags(string requiredFlags, string? existingFlags) =>
         string.IsNullOrWhiteSpace(existingFlags)
             ? requiredFlags
