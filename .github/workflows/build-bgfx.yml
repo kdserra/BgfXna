@@ -176,7 +176,7 @@ jobs:
           echo "tag_name=${tag_name}" >> $GITHUB_OUTPUT
           
           echo "body<<EOF" >> $GITHUB_OUTPUT
-          echo "This release contains the native dependencies for BGFX." >> $GITHUB_OUTPUT
+          echo "This release contains the native binaries for BGFX." >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "Build Number: ${{ github.run_number }}" >> $GITHUB_OUTPUT
           echo "For commit: ${{ github.sha }}" >> $GITHUB_OUTPUT
