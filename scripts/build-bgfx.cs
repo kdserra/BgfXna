@@ -125,7 +125,17 @@ else if (options.IsDesktopUnix)
     string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", $"gmake-{gccFlavor}");
     Run(genie, ["--with-shared-lib", $"--gcc={gccFlavor}", "gmake"], bgfxPath);
     string make = FindMake();
-    Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}", "bgfx-shared-lib"], bgfxPath);
+    Dictionary<string, string>? environment = null;
+    if (options.Target == "osx-x64" && System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64)
+    {
+        environment = new Dictionary<string, string>
+        {
+            ["CFLAGS"] = "-arch x86_64",
+            ["CXXFLAGS"] = "-arch x86_64",
+            ["LDFLAGS"] = "-arch x86_64"
+        };
+    }
+    Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}", "bgfx-shared-lib"], bgfxPath, environment);
 
     string extension = options.Target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase) ? ".dylib" : ".so";
     string expectedName = options.Configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase)
@@ -394,7 +404,14 @@ static void EnsureDesktopUnixTargetCanBuild(string target)
     string expectedArchitecture = target.EndsWith("-arm64", StringComparison.OrdinalIgnoreCase) ? "Arm64" : "X64";
     if (!RuntimeInformation.ProcessArchitecture.ToString().Equals(expectedArchitecture, StringComparison.OrdinalIgnoreCase))
     {
-        throw new InvalidOperationException($"{target} BGFX native libraries must be built on a {expectedArchitecture} host.");
+        if (target.StartsWith("osx-", StringComparison.OrdinalIgnoreCase) && OperatingSystem.IsMacOS())
+        {
+            Console.WriteLine($"Cross-compiling {target} on {RuntimeInformation.ProcessArchitecture} host.");
+        }
+        else
+        {
+            throw new InvalidOperationException($"{target} BGFX native libraries must be built on a {expectedArchitecture} host.");
+        }
     }
 }
 

@@ -24,7 +24,7 @@ jobs:
             "win-x64": "windows-latest",
             "linux-x64": "ubuntu-latest",
             "linux-arm64": "ubuntu-24.04-arm",
-            "osx-x64": "macos-13",
+            "osx-x64": "macos-latest",
             "osx-arm64": "macos-latest",
             "android-arm": "ubuntu-latest",
             "android-arm64": "ubuntu-latest",
