@@ -165,14 +165,14 @@ else if (options.IsDesktopUnix)
     {
         string workspaceRoot = Path.GetFullPath(Path.Combine(bgfxPath, "../.."));
         string relativeProjectDir = Path.GetRelativePath(bgfxPath, projectDirectory);
-        Console.WriteLine($"Running make inside Docker (ubuntu:18.04) for target {options.Target}...");
+        Console.WriteLine($"Running make inside Docker (ubuntu:20.04) for target {options.Target}...");
         Run("docker", [
             "run", "--rm", 
             "-v", $"{workspaceRoot}:{workspaceRoot}", 
             "-w", bgfxPath, 
-            "ubuntu:18.04", 
+            "ubuntu:20.04", 
             "sh", "-c", 
-            $"apt-get update && apt-get install -y software-properties-common && add-apt-repository -y ppa:ubuntu-toolchain-r/test && apt-get update && apt-get install -y g++-10 build-essential libx11-dev libgl1-mesa-dev libxext-dev && ln -sf /usr/bin/g++-10 /usr/bin/g++ && ln -sf /usr/bin/gcc-10 /usr/bin/gcc && make -R -C {relativeProjectDir} config={options.Configuration.ToLowerInvariant()} bgfx-shared-lib"
+            $"apt-get update && apt-get install -y g++-11 build-essential libx11-dev libgl1-mesa-dev libxext-dev && ln -sf /usr/bin/g++-11 /usr/bin/g++ && ln -sf /usr/bin/gcc-11 /usr/bin/gcc && make -R -C {relativeProjectDir} config={options.Configuration.ToLowerInvariant()} bgfx-shared-lib"
         ], bgfxPath);
     }
     else
