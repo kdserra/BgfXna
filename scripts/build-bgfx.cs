@@ -172,7 +172,7 @@ else if (options.IsDesktopUnix)
             "-w", bgfxPath, 
             "ubuntu:20.04", 
             "sh", "-c", 
-            $"apt-get update && apt-get install -y g++-11 build-essential libx11-dev libgl1-mesa-dev libxext-dev && ln -sf /usr/bin/g++-11 /usr/bin/g++ && ln -sf /usr/bin/gcc-11 /usr/bin/gcc && make -R -C {relativeProjectDir} config={options.Configuration.ToLowerInvariant()} bgfx-shared-lib"
+            $"apt-get update && apt-get install -y software-properties-common && add-apt-repository -y ppa:ubuntu-toolchain-r/test && apt-get update && apt-get install -y g++-11 build-essential libx11-dev libgl1-mesa-dev libxext-dev && ln -sf /usr/bin/g++-11 /usr/bin/g++ && ln -sf /usr/bin/gcc-11 /usr/bin/gcc && make -R -C {relativeProjectDir} config={options.Configuration.ToLowerInvariant()} bgfx-shared-lib"
         ], bgfxPath);
     }
     else
