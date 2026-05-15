@@ -170,4 +170,4 @@ jobs:
           body: ${{ steps.vars.outputs.body }}
           files: artifacts/*.zip
           draft: false
-          prerelease: false
+          prerelease: true
