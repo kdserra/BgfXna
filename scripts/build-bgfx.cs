@@ -61,8 +61,22 @@ else if (options.IsIOS)
     IosToolchain iosToolchain = FindIosToolchain(options.Target);
     Run(genie, [$"--gcc={gcc}", "gmake"], bgfxPath);
     PatchIosGeneratedMakefiles(projectDirectory, iosToolchain);
+    CleanIosBuildOutput(bgfxPath, gcc, options.Configuration);
     string make = FindMake();
-    Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}"], bgfxPath);
+    Run(make,
+        [
+            "-R",
+            "-C",
+            projectDirectory,
+            $"config={options.Configuration.ToLowerInvariant()}",
+            $"CC={iosToolchain.Clang}",
+            $"CXX={iosToolchain.Clangxx}",
+            $"AR={iosToolchain.Ar}",
+            $"CFLAGS={iosToolchain.CompilerFlags}",
+            $"CXXFLAGS={iosToolchain.CompilerFlags}",
+            $"LDFLAGS={iosToolchain.LinkerFlags}",
+        ],
+        bgfxPath);
 
     IReadOnlyList<string> libraries = FindStaticBuiltLibraries(Path.Combine(bgfxPath, ".build", gcc, "bin"), options.Configuration);
     ValidateBgfxC99Symbols(libraries);
@@ -152,7 +166,36 @@ static IosToolchain FindIosToolchain(string target)
         ? $"{architecture}-apple-ios16.0-simulator"
         : "arm64-apple-ios16.0";
 
-    return new IosToolchain(platform, sdkPath, targetTriple);
+    string minimumVersionFlag = target.Equals("ios-simulator", StringComparison.OrdinalIgnoreCase)
+        ? "-mios-simulator-version-min=16.0"
+        : "-mios-version-min=16.0";
+
+    string clang = Capture("xcrun", ["--sdk", sdk, "--find", "clang"], Directory.GetCurrentDirectory()).Trim();
+    string clangxx = Capture("xcrun", ["--sdk", sdk, "--find", "clang++"], Directory.GetCurrentDirectory()).Trim();
+    string ar = Capture("xcrun", ["--sdk", sdk, "--find", "ar"], Directory.GetCurrentDirectory()).Trim();
+    string compilerFlags = $"-target {targetTriple} -isysroot \"{sdkPath}\" -arch {architecture} {minimumVersionFlag}";
+    string linkerFlags = compilerFlags;
+
+    return new IosToolchain(platform, sdkPath, targetTriple, clang, clangxx, ar, compilerFlags, linkerFlags);
+}
+
+static void CleanIosBuildOutput(string bgfxPath, string gcc, string configuration)
+{
+    string buildRoot = Path.Combine(bgfxPath, ".build", gcc);
+    string objRoot = Path.Combine(buildRoot, "obj", configuration);
+    if (Directory.Exists(objRoot))
+    {
+        Directory.Delete(objRoot, recursive: true);
+    }
+
+    string binRoot = Path.Combine(buildRoot, "bin");
+    if (Directory.Exists(binRoot))
+    {
+        foreach (string archive in Directory.EnumerateFiles(binRoot, $"*{configuration}.a", SearchOption.TopDirectoryOnly))
+        {
+            File.Delete(archive);
+        }
+    }
 }
 
 static void PatchIosGeneratedMakefiles(string projectDirectory, IosToolchain toolchain)
@@ -584,7 +627,15 @@ internal static class ProcessStartInfoExtensions
     }
 }
 
-internal sealed record IosToolchain(string Platform, string SdkPath, string TargetTriple);
+internal sealed record IosToolchain(
+    string Platform,
+    string SdkPath,
+    string TargetTriple,
+    string Clang,
+    string Clangxx,
+    string Ar,
+    string CompilerFlags,
+    string LinkerFlags);
 
 internal sealed record Options(string Configuration, string Platform, string Target, string SourceRoot, string Generator, bool SkipClone)
 {
