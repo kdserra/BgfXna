@@ -96,6 +96,7 @@ jobs:
         run: |
           sed -i '' 's/LANGUAGES C VERSION/LANGUAGES C Swift VERSION/' sdl-src/CMakeLists.txt
           sed -i '' 's|src/video/uikit/\*.m"|src/video/uikit/*.m" "${SDL3_SOURCE_DIR}/src/video/uikit/*.swift"|' sdl-src/CMakeLists.txt
+          sed -i '' 's/-idirafter/-I/g' sdl-src/CMakeLists.txt
 
       - name: Configure CMake
         shell: bash
