@@ -126,8 +126,8 @@ jobs:
           date_human=$(date +'%Y-%m-%d')
           time_human=$(date +'%r')
           
-          release_name="${{ github.run_number }}"
-          tag_name="build-${{ github.run_number }}"
+          release_name="deps-${{ github.run_number }}"
+          tag_name="deps-${{ github.run_number }}"
           
           echo "release_name=${release_name}" >> $GITHUB_OUTPUT
           echo "tag_name=${tag_name}" >> $GITHUB_OUTPUT
