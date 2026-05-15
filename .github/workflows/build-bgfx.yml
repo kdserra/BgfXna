@@ -1,0 +1,108 @@
+name: Build BGFX
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }} (${{ matrix.configuration }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64, android-arm, android-arm64, android-x86, android-x64, android-vulkan-arm, android-vulkan-arm64, android-vulkan-x86, android-vulkan-x64, browser-wasm, ios-arm64, ios-simulator]
+        configuration: [Debug, Release]
+        include:
+          - target: win-x64
+            os: windows-latest
+          - target: linux-x64
+            os: ubuntu-latest
+          - target: linux-arm64
+            os: ubuntu-24.04-arm
+          - target: osx-x64
+            os: macos-13
+          - target: osx-arm64
+            os: macos-latest
+          - target: android-arm
+            os: ubuntu-latest
+          - target: android-arm64
+            os: ubuntu-latest
+          - target: android-x86
+            os: ubuntu-latest
+          - target: android-x64
+            os: ubuntu-latest
+          - target: android-vulkan-arm
+            os: ubuntu-latest
+          - target: android-vulkan-arm64
+            os: ubuntu-latest
+          - target: android-vulkan-x86
+            os: ubuntu-latest
+          - target: android-vulkan-x64
+            os: ubuntu-latest
+          - target: browser-wasm
+            os: ubuntu-latest
+          - target: ios-arm64
+            os: macos-latest
+          - target: ios-simulator
+            os: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Setup Emscripten
+        if: matrix.target == 'browser-wasm'
+        uses: emscripten-core/setup-emsdk@v11
+
+      - name: Build
+        run: dotnet run scripts/build-bgfx.cs -- --target ${{ matrix.target }} --configuration ${{ matrix.configuration }} --source-root native-src
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bgfx-${{ matrix.target }}-${{ matrix.configuration }}
+          path: native/bgfx/bin/
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate Release Name
+        id: vars
+        run: |
+          sha_short=$(echo ${{ github.sha }} | cut -c1-7)
+          datetime=$(date +'%Y%m%d-%H%M%S')
+          echo "release_name=${sha_short}-${datetime}" >> $GITHUB_OUTPUT
+          echo "tag_name=build-${sha_short}-${datetime}" >> $GITHUB_OUTPUT
+
+      - name: Zip Artifacts
+        run: |
+          cd artifacts
+          for d in bgfx-*; do
+            if [ -d "$d" ]; then
+              zip -r "${d}.zip" "$d"
+            fi
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag_name }}
+          name: ${{ steps.vars.outputs.release_name }}
+          files: artifacts/*.zip
+          draft: false
+          prerelease: false
