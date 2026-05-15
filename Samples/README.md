@@ -4,15 +4,16 @@ Each project links the shared AutoPong-style game in `Samples/Shared` and select
 
 Projects:
 
-- `WindowsDX11`: Direct3D 11 for Windows
-- `WindowsDX12`: Direct3D 12 for Windows
-- `BrowserWebApp`: WebGL/WebGPU for Browser
+- `WindowsDX11`: Direct3D 11 for Windows.
+- `WindowsDX12`: Direct3D 12 for Windows.
+- `BrowserWebApp`: WebGL/WebGPU for Browser.
+- `DesktopHeadless`: Headless Game Server CLI for Windows, MacOS, and Linux.
 - `DesktopOpenGL`: OpenGL for Windows and Linux. The current BGFX source tree does not expose a macOS OpenGL renderer/context path; use `MacMetal` on macOS.
-- `DesktopVulkan`: Vulkan for Windows and Linux
-- `MacMetal`: Metal for macOS
-- `iOSMetal`: Metal for iOS
-- `AndroidOpenGLES`: OpenGL ES for Android
-- `AndroidVulkan`: Vulkan for Android
+- `DesktopVulkan`: Vulkan for Windows and Linux.
+- `MacMetal`: Metal for macOS.
+- `iOSMetal`: Metal for iOS.
+- `AndroidOpenGLES`: OpenGL ES for Android.
+- `AndroidVulkan`: Vulkan for Android.
 
 The current BGFX backend is represented by `IBgfxBackend`; these samples validate the XNA-facing integration path and are ready for concrete native bgfx backend bindings.
 
