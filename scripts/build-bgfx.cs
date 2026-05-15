@@ -125,6 +125,31 @@ else if (options.IsDesktopUnix)
     string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", $"gmake-{gccFlavor}");
     
     Run(genie, ["--with-shared-lib", $"--gcc={gccFlavor}", "gmake"], bgfxPath);
+    
+    if (options.Target == "linux-arm64" && Directory.Exists(projectDirectory))
+    {
+        Console.WriteLine("Patching makefiles to remove x86 flags on Arm64...");
+        foreach (string file in Directory.GetFiles(projectDirectory, "*.make"))
+        {
+            string content = File.ReadAllText(file);
+            bool modified = false;
+            string[] sseFlags = ["-mfpmath=sse", "-msse4.2", "-msse2", "-msse3", "-mssse3", "-msse4.1"];
+            foreach (string flag in sseFlags)
+            {
+                if (content.Contains(flag))
+                {
+                    content = content.Replace(flag, "");
+                    modified = true;
+                }
+            }
+            if (modified)
+            {
+                File.WriteAllText(file, content);
+                Console.WriteLine($"Patched {Path.GetFileName(file)}");
+            }
+        }
+    }
+
     string make = FindMake();
     Dictionary<string, string>? environment = null;
     if (options.Target == "osx-x64" && System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64)
