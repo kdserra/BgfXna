@@ -121,11 +121,32 @@ jobs:
 
       - name: Generate Release Name
         id: vars
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           sha_short=$(echo ${{ github.sha }} | cut -c1-7)
-          datetime=$(date +'%Y%m%d-%H%M%S')
-          echo "release_name=${sha_short}-${datetime}" >> $GITHUB_OUTPUT
-          echo "tag_name=build-${sha_short}-${datetime}" >> $GITHUB_OUTPUT
+          
+          # Count releases
+          release_count=$(gh release list --limit 1000 | wc -l)
+          build_number=$((release_count + 1))
+          
+          timestamp=$(date +%s)
+          date_human=$(date +'%Y-%m-%d')
+          time_human=$(date +'%r')
+          
+          release_name="${build_number}-${sha_short}-${timestamp}"
+          tag_name="build-${release_name}"
+          
+          echo "release_name=${release_name}" >> $GITHUB_OUTPUT
+          echo "tag_name=${tag_name}" >> $GITHUB_OUTPUT
+          
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "Build Number: ${build_number}" >> $GITHUB_OUTPUT
+          echo "For commit: ${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "Unix timestamp: ${timestamp}" >> $GITHUB_OUTPUT
+          echo "Date: ${date_human}" >> $GITHUB_OUTPUT
+          echo "Time: ${time_human}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Zip Artifacts
         run: |
@@ -141,6 +162,7 @@ jobs:
         with:
           tag_name: ${{ steps.vars.outputs.tag_name }}
           name: ${{ steps.vars.outputs.release_name }}
+          body: ${{ steps.vars.outputs.body }}
           files: artifacts/*.zip
           draft: false
           prerelease: false
