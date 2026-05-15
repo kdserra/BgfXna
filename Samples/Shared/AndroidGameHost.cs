@@ -142,10 +142,10 @@ internal sealed class AndroidGameHost : SurfaceView, ISurfaceHolderCallback
         }
     }
 
-    [DllImport("android")]
+    [DllImport("libandroid.so")]
     private static extern IntPtr ANativeWindow_fromSurface(IntPtr env, IntPtr surface);
 
-    [DllImport("android")]
+    [DllImport("libandroid.so")]
     private static extern void ANativeWindow_release(IntPtr window);
 }
 #endif

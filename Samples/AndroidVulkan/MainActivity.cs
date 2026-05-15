@@ -6,13 +6,16 @@ using Android.Views;
 namespace BgfXna.Samples;
 
 [Activity(
-    Name = "com.bgfxna.sample.androidopengl.MainActivity",
-    Label = "BgfXna Android OpenGL Sample",
+    Name = "com.bgfxna.sample.androidvulkan.MainActivity",
+    Label = "BgfXna Android Vulkan Sample",
     MainLauncher = true,
     Exported = true,
     Theme = "@style/BgfXnaGameTheme",
-    ConfigurationChanges = ConfigChanges.UiMode | ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.Density,
-    ScreenOrientation = ScreenOrientation.Landscape
+    ConfigurationChanges = ConfigChanges.UiMode
+        | ConfigChanges.Orientation
+        | ConfigChanges.ScreenSize
+        | ConfigChanges.Density,
+    ScreenOrientation = ScreenOrientation.Portrait
 )]
 public class MainActivity : Activity
 {
@@ -35,6 +38,7 @@ public class MainActivity : Activity
                 | SystemUiFlags.LayoutStable;
 #pragma warning restore CA1422
         }
+
         _host = new AndroidGameHost(this);
         SetContentView(_host);
     }

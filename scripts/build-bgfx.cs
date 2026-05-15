@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 
 Options options = Options.Parse(args);
@@ -9,7 +11,7 @@ string sourceRoot = Path.GetFullPath(Path.Combine(repoRoot, options.SourceRoot))
 string bxPath = Path.Combine(sourceRoot, "bx");
 string bimgPath = Path.Combine(sourceRoot, "bimg");
 string bgfxPath = Path.Combine(sourceRoot, "bgfx");
-string outputRoot = Path.Combine(repoRoot, "native", "bgfx", "bin", options.Configuration, options.Target);
+string outputRoot = Path.Combine(repoRoot, "native", "bgfx", "bin", options.Configuration, ToNativeOutputTarget(options.Target));
 
 Directory.CreateDirectory(sourceRoot);
 
@@ -31,9 +33,17 @@ if (options.IsAndroid)
 {
     string gcc = ToAndroidGcc(options.Target);
     string projectDirectory = Path.Combine(bgfxPath, ".build", "projects", $"gmake-{gcc}");
-    Run(genie, ["--with-shared-lib", $"--gcc={gcc}", "gmake"], bgfxPath);
+    string androidNdkRoot = FindAndroidNdkRoot(required: true)!;
+    IReadOnlyDictionary<string, string> androidEnvironment = CreateAndroidBuildEnvironment(androidNdkRoot);
+    Run(genie, ["--with-shared-lib", $"--gcc={gcc}", "gmake"], bgfxPath, androidEnvironment);
+    if (options.IsAndroidVulkan)
+    {
+        PatchAndroidVulkanGeneratedMakefiles(projectDirectory);
+        CleanAndroidBuildOutput(bgfxPath, gcc, options.Configuration);
+    }
+
     string make = FindMake();
-    Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}"], bgfxPath);
+    Run(make, ["-R", "-C", projectDirectory, $"config={options.Configuration.ToLowerInvariant()}"], bgfxPath, androidEnvironment);
 
     CopyBuiltLibraries(
         FindBuiltLibraries(Path.Combine(bgfxPath, ".build", gcc, "bin"), options.Configuration, ".so"),
@@ -107,6 +117,16 @@ else
 
 Console.WriteLine($"BGFX native libraries copied to {outputRoot}");
 
+static string ToNativeOutputTarget(string target) =>
+    target switch
+    {
+        "android-vulkan-arm" => "android-arm",
+        "android-vulkan-arm64" => "android-arm64",
+        "android-vulkan-x86" => "android-x86",
+        "android-vulkan-x64" => "android-x64",
+        _ => target,
+    };
+
 static string ToAndroidGcc(string target) =>
     target switch
     {
@@ -114,6 +134,10 @@ static string ToAndroidGcc(string target) =>
         "android-arm64" => "android-arm64",
         "android-x86" => "android-x86",
         "android-x64" => "android-x86_64",
+        "android-vulkan-arm" => "android-arm",
+        "android-vulkan-arm64" => "android-arm64",
+        "android-vulkan-x86" => "android-x86",
+        "android-vulkan-x64" => "android-x86_64",
         _ => throw new ArgumentException($"Target '{target}' is not an Android target."),
     };
 
@@ -124,8 +148,188 @@ static string ToAndroidTriple(string target) =>
         "android-arm64" => "aarch64-linux-android",
         "android-x86" => "i686-linux-android",
         "android-x64" => "x86_64-linux-android",
+        "android-vulkan-arm" => "arm-linux-androideabi",
+        "android-vulkan-arm64" => "aarch64-linux-android",
+        "android-vulkan-x86" => "i686-linux-android",
+        "android-vulkan-x64" => "x86_64-linux-android",
         _ => throw new ArgumentException($"Target '{target}' is not an Android target."),
     };
+
+static void PatchAndroidVulkanGeneratedMakefiles(string projectDirectory)
+{
+    if (!Directory.Exists(projectDirectory))
+    {
+        return;
+    }
+
+    foreach (string file in Directory.EnumerateFiles(projectDirectory, "*", SearchOption.TopDirectoryOnly)
+        .Where(path => Path.GetFileName(path).Equals("Makefile", StringComparison.OrdinalIgnoreCase)
+            || Path.GetExtension(path).Equals(".make", StringComparison.OrdinalIgnoreCase)))
+    {
+        string contents = File.ReadAllText(file);
+        string patched = AddMakefileFlag(contents, "DEFINES", "-DBGFX_CONFIG_RENDERER_VULKAN=1");
+        patched = AddMakefileFlag(patched, "DEFINES", "-DBGFX_CONFIG_DEBUG_OBJECT_NAME=0");
+        if (!string.Equals(contents, patched, StringComparison.Ordinal))
+        {
+            File.WriteAllText(file, patched);
+        }
+    }
+}
+
+static void CleanAndroidBuildOutput(string bgfxPath, string gcc, string configuration)
+{
+    string buildRoot = Path.Combine(bgfxPath, ".build", gcc);
+    string objRoot = Path.Combine(buildRoot, "obj", configuration);
+    if (Directory.Exists(objRoot))
+    {
+        Directory.Delete(objRoot, recursive: true);
+    }
+
+    string binRoot = Path.Combine(buildRoot, "bin");
+    if (Directory.Exists(binRoot))
+    {
+        foreach (string library in Directory.EnumerateFiles(binRoot, $"*{configuration}.so", SearchOption.TopDirectoryOnly))
+        {
+            File.Delete(library);
+        }
+    }
+}
+
+static IReadOnlyDictionary<string, string> CreateAndroidBuildEnvironment(string androidNdkRoot)
+{
+    string makeSafeNdkRoot = OperatingSystem.IsWindows()
+        ? GetWindowsShortPath(androidNdkRoot)
+        : androidNdkRoot;
+
+    Dictionary<string, string> environment = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["ANDROID_NDK_ROOT"] = makeSafeNdkRoot,
+        ["ANDROID_NDK_HOME"] = makeSafeNdkRoot,
+    };
+
+    return environment;
+}
+
+static string? FindAndroidNdkRoot(bool required)
+{
+    List<string> candidates = new();
+    AddIfNotEmpty(candidates, Environment.GetEnvironmentVariable("ANDROID_NDK_ROOT"));
+    AddIfNotEmpty(candidates, Environment.GetEnvironmentVariable("ANDROID_NDK_HOME"));
+
+    foreach (string sdkRoot in FindAndroidSdkRoots())
+    {
+        string ndkRoot = Path.Combine(sdkRoot, "ndk");
+        if (Directory.Exists(ndkRoot))
+        {
+            candidates.AddRange(Directory.EnumerateDirectories(ndkRoot).OrderByDescending(Path.GetFileName));
+        }
+
+        AddIfDirectory(candidates, Path.Combine(sdkRoot, "ndk-bundle"));
+    }
+
+    foreach (string candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+    {
+        if (IsValidAndroidNdkRoot(candidate))
+        {
+            return Path.GetFullPath(candidate);
+        }
+    }
+
+    if (required)
+    {
+        throw new InvalidOperationException("Android NDK was not found. Install the .NET Android workload/Android SDK NDK, or set ANDROID_NDK_ROOT.");
+    }
+
+    return null;
+}
+
+static IEnumerable<string> FindAndroidSdkRoots()
+{
+    List<string> roots = new();
+    AddIfNotEmpty(roots, Environment.GetEnvironmentVariable("ANDROID_HOME"));
+    AddIfNotEmpty(roots, Environment.GetEnvironmentVariable("ANDROID_SDK_ROOT"));
+
+    string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    AddIfDirectory(roots, Path.Combine(localAppData, "Android", "Sdk"));
+
+    string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+    AddIfDirectory(roots, Path.Combine(programFilesX86, "Android", "android-sdk"));
+
+    return roots.Distinct(StringComparer.OrdinalIgnoreCase);
+}
+
+static void AddIfNotEmpty(List<string> values, string? value)
+{
+    if (!string.IsNullOrWhiteSpace(value))
+    {
+        values.Add(value);
+    }
+}
+
+static void AddIfDirectory(List<string> values, string path)
+{
+    if (Directory.Exists(path))
+    {
+        values.Add(path);
+    }
+}
+
+static bool IsValidAndroidNdkRoot(string path)
+{
+    if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+    {
+        return false;
+    }
+
+    string prebuilt = FindAndroidNdkPrebuiltDirectory(path);
+    string clang = Path.Combine(prebuilt, "bin", OperatingSystem.IsWindows() ? "clang.exe" : "clang");
+    return File.Exists(clang);
+}
+
+static string FindAndroidNdkPrebuiltDirectory(string ndkRoot)
+{
+    string host = OperatingSystem.IsWindows()
+        ? "windows-x86_64"
+        : OperatingSystem.IsMacOS()
+            ? "darwin-x86_64"
+            : "linux-x86_64";
+
+    string candidate = Path.Combine(ndkRoot, "toolchains", "llvm", "prebuilt", host);
+    if (Directory.Exists(candidate))
+    {
+        return candidate;
+    }
+
+    string prebuiltRoot = Path.Combine(ndkRoot, "toolchains", "llvm", "prebuilt");
+    if (Directory.Exists(prebuiltRoot))
+    {
+        string? fallback = Directory.EnumerateDirectories(prebuiltRoot).FirstOrDefault();
+        if (fallback is not null)
+        {
+            return fallback;
+        }
+    }
+
+    return candidate;
+}
+
+static string GetWindowsShortPath(string path)
+{
+    StringBuilder buffer = new(512);
+    uint length = WindowsNative.GetShortPathName(path, buffer, (uint)buffer.Capacity);
+    if (length == 0)
+    {
+        return path;
+    }
+
+    if (length > buffer.Capacity)
+    {
+        buffer.EnsureCapacity((int)length);
+        length = WindowsNative.GetShortPathName(path, buffer, (uint)buffer.Capacity);
+    }
+
+    return length == 0 ? path : buffer.ToString();
+}
 
 static string ToIosGcc(string target) =>
     target switch
@@ -555,18 +759,15 @@ static void CopyBuiltLibraries(IReadOnlyList<string> candidates, string outputRo
 
 static void CopyAndroidRuntimeDependencies(string target, string outputRoot)
 {
-    string? ndkRoot = Environment.GetEnvironmentVariable("ANDROID_NDK_ROOT");
+    string? ndkRoot = FindAndroidNdkRoot(required: false);
     if (string.IsNullOrWhiteSpace(ndkRoot))
     {
         return;
     }
 
+    string prebuiltDirectory = FindAndroidNdkPrebuiltDirectory(ndkRoot);
     string libcxx = Path.Combine(
-        ndkRoot,
-        "toolchains",
-        "llvm",
-        "prebuilt",
-        "windows-x86_64",
+        prebuiltDirectory,
         "sysroot",
         "usr",
         "lib",
@@ -659,6 +860,7 @@ internal sealed record IosToolchain(
 internal sealed record Options(string Configuration, string Platform, string Target, string SourceRoot, string Generator, bool SkipClone)
 {
     public bool IsAndroid => Target.StartsWith("android-", StringComparison.OrdinalIgnoreCase);
+    public bool IsAndroidVulkan => Target.StartsWith("android-vulkan-", StringComparison.OrdinalIgnoreCase);
     public bool IsBrowserWasm => Target.Equals("browser-wasm", StringComparison.OrdinalIgnoreCase);
     public bool IsIOS => Target.StartsWith("ios-", StringComparison.OrdinalIgnoreCase);
 
@@ -708,7 +910,7 @@ internal sealed record Options(string Configuration, string Platform, string Tar
 
         Validate(configuration, ["Debug", "Release"], "configuration");
         Validate(platform, ["x64"], "platform");
-        Validate(target, ["win-x64", "android-arm", "android-arm64", "android-x86", "android-x64", "browser-wasm", "ios-arm64", "ios-simulator"], "target");
+        Validate(target, ["win-x64", "android-arm", "android-arm64", "android-x86", "android-x64", "android-vulkan-arm", "android-vulkan-arm64", "android-vulkan-x86", "android-vulkan-x64", "browser-wasm", "ios-arm64", "ios-simulator"], "target");
         Validate(generator, ["vs2022", "vs2026"], "generator");
 
         return new Options(configuration, platform, target, sourceRoot, generator, skipClone);
@@ -743,7 +945,9 @@ internal sealed record Options(string Configuration, string Platform, string Tar
           -c, --configuration <Debug|Release>   Build configuration. Default: Debug
           -p, --platform <x64>                  Native platform. Default: x64
           -t, --target <target>                 Native target. Default: win-x64
-                                                Values: win-x64, android-arm, android-arm64, android-x86, android-x64, browser-wasm, ios-arm64, ios-simulator
+                                                Values: win-x64, android-arm, android-arm64, android-x86, android-x64,
+                                                        android-vulkan-arm, android-vulkan-arm64, android-vulkan-x86, android-vulkan-x64,
+                                                        browser-wasm, ios-arm64, ios-simulator
           --source-root <path>                  bx/bimg/bgfx clone root. Default: .native-src
           --generator <vs2022|vs2026>           GENie generator. Default: vs2026
           --skip-clone                          Do not clone missing bx/bimg/bgfx repositories.
@@ -838,4 +1042,10 @@ internal sealed record EmscriptenToolchain(string EmscriptenPath, string Emmake,
         string.IsNullOrWhiteSpace(existingFlags)
             ? requiredFlags
             : requiredFlags + " " + existingFlags;
+}
+
+internal static partial class WindowsNative
+{
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern uint GetShortPathName(string longPath, StringBuilder shortPath, uint bufferLength);
 }
