@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: 'Comma-separated list of platforms to build (e.g., win-x64,linux-x64) or "all"'
+        description: 'Comma-separated list of platforms to build or "all". Supported: win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64, android-arm, android-arm64, android-x86, android-x64, android-vulkan-arm, android-vulkan-arm64, android-vulkan-x86, android-vulkan-x64, browser-wasm, ios-arm64, ios-simulator'
         default: 'all'
         required: false
       configurations:
