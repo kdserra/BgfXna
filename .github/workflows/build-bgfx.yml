@@ -85,15 +85,8 @@ jobs:
         if: matrix.target == 'browser-wasm'
         uses: emscripten-core/setup-emsdk@v11
 
-      - name: Clean native-src
-        shell: pwsh
-        run: |
-          if (Test-Path native-src) {
-            Remove-Item -Recurse -Force native-src
-          }
-
       - name: Build
-        run: dotnet run scripts/build-bgfx.cs -- --target ${{ matrix.target }} --configuration ${{ matrix.configuration }} --source-root native-src --generator vs2022
+        run: dotnet run scripts/build-bgfx.cs -- --target ${{ matrix.target }} --configuration ${{ matrix.configuration }} --source-root native-src --generator vs2022 --skip-clone
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
