@@ -90,14 +90,15 @@
     </NativeReference>
   </ItemGroup>
 
-  <Target Name="BgfXnaRemoveEmptyIosNativeLibraryPlaceholders"
-          BeforeTargets="_CompileToNative"
+  <Target Name="BgfXnaExcludeIosRuntimeDylibPlaceholdersFromNativeLink"
+          BeforeTargets="_ComputeLinkNativeExecutableInputs"
           Condition="'$(TargetFramework)' == 'net10.0-ios' and '$(MSBuildProjectName)' != 'BgfXna' and '$(DesignTimeBuild)' != 'true'">
     <ItemGroup>
-      <_BgfXnaEmptyIosDylib Include="$(IntermediateOutputPath)**\nativelibraries\*.dylib"
-                            Condition="$([System.IO.File]::Exists('%(Identity)')) and $([System.IO.FileInfo]::new('%(Identity)').Length) == 0" />
+      <_BgfXnaIosRuntimeDylibPlaceholder Include="$(_IntermediateNativeLibraryDir)*.dylib" />
+      <_FileNativeReference Remove="@(_BgfXnaIosRuntimeDylibPlaceholder)" />
+      <_NativeReferences Remove="@(_BgfXnaIosRuntimeDylibPlaceholder)" />
+      <_LinkNativeExecutableInputs Remove="@(_BgfXnaIosRuntimeDylibPlaceholder)" />
     </ItemGroup>
-    <Delete Files="@(_BgfXnaEmptyIosDylib)" />
   </Target>
 
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'BgfXna' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([System.String]::Copy('$(TargetFramework)').Contains('-android'))">
