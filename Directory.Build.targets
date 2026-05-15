@@ -97,32 +97,14 @@
       <_BgfXnaIosRuntimeDylibPlaceholder Include="$(_IntermediateNativeLibraryDir)*.dylib" />
       <_BgfXnaIosRuntimeDylibPlaceholder Include="$(IntermediateOutputPath)nativelibraries/*.dylib" />
       <_BgfXnaIosRuntimeDylibPlaceholder Include="$(DeviceSpecificIntermediateOutputPath)nativelibraries/*.dylib" />
-      <_FileNativeReference Remove="@(_BgfXnaIosRuntimeDylibPlaceholder)" />
-      <_FileNativeReference Remove="$(IntermediateOutputPath)nativelibraries/*.dylib" />
-      <_FileNativeReference Remove="$(DeviceSpecificIntermediateOutputPath)nativelibraries/*.dylib" />
-      <_NativeReferences Remove="@(_BgfXnaIosRuntimeDylibPlaceholder)" />
-      <_NativeReferences Remove="$(IntermediateOutputPath)nativelibraries/*.dylib" />
-      <_NativeReferences Remove="$(DeviceSpecificIntermediateOutputPath)nativelibraries/*.dylib" />
+      <_FileNativeReference Update="@(_BgfXnaIosRuntimeDylibPlaceholder)">
+        <LinkToExecutable>false</LinkToExecutable>
+      </_FileNativeReference>
       <_LinkNativeExecutableInputs Remove="@(_BgfXnaIosRuntimeDylibPlaceholder)" />
       <_LinkNativeExecutableInputs Remove="$(IntermediateOutputPath)nativelibraries/*.dylib" />
       <_LinkNativeExecutableInputs Remove="$(DeviceSpecificIntermediateOutputPath)nativelibraries/*.dylib" />
     </ItemGroup>
     <Message Importance="low" Text="Removed iOS runtime dylib placeholders from native link: @(_BgfXnaIosRuntimeDylibPlaceholder)" Condition="'@(_BgfXnaIosRuntimeDylibPlaceholder)' != ''" />
-  </Target>
-
-  <Target Name="BgfXnaExcludeIosRuntimeDylibPlaceholdersFromPublishNativeReferences"
-          BeforeTargets="_ComputePublishLocation"
-          Condition="'$(TargetFramework)' == 'net10.0-ios' and '$(MSBuildProjectName)' != 'BgfXna' and '$(DesignTimeBuild)' != 'true'">
-    <ItemGroup>
-      <_BgfXnaIosRuntimeDylibPublishItem Include="@(ResolvedFileToPublish)"
-                                         Condition="'%(ResolvedFileToPublish.Extension)' == '.dylib' and $([System.String]::Copy('%(ResolvedFileToPublish.FileName)').StartsWith('libSystem.'))" />
-      <_BgfXnaIosRuntimeDylibPublishItem Include="@(ResolvedFileToPublish)"
-                                         Condition="'%(ResolvedFileToPublish.Extension)' == '.dylib' and $([System.String]::Copy('%(ResolvedFileToPublish.FileName)').StartsWith('libmono'))" />
-      <_BgfXnaIosRuntimeDylibPublishItem Include="@(ResolvedFileToPublish)"
-                                         Condition="'%(ResolvedFileToPublish.Extension)' == '.dylib' and $([System.String]::Copy('%(ResolvedFileToPublish.FileName)').StartsWith('libxamarin-dotnet'))" />
-      <ResolvedFileToPublish Remove="@(_BgfXnaIosRuntimeDylibPublishItem)" />
-    </ItemGroup>
-    <Message Importance="low" Text="Removed iOS runtime dylib placeholders from publish native references: @(_BgfXnaIosRuntimeDylibPublishItem)" Condition="'@(_BgfXnaIosRuntimeDylibPublishItem)' != ''" />
   </Target>
 
   <ItemGroup Condition="'$(MSBuildProjectName)' == 'BgfXna' and '$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([System.String]::Copy('$(TargetFramework)').Contains('-android'))">
