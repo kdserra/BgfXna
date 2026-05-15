@@ -1,0 +1,152 @@
+name: Build SDL2
+
+on:
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: 'Comma-separated list of platforms to build or "all". Supported: win-x64, linux-x64, osx-x64, osx-arm64'
+        default: 'all'
+        required: false
+      configurations:
+        description: 'Comma-separated list of configurations to build (Debug,Release) or "all"'
+        default: 'all'
+        required: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_include: ${{ steps.parse.outputs.matrix_include }}
+    steps:
+      - id: parse
+        run: |
+          full_mapping='{
+            "win-x64": {"runner": "windows-latest"},
+            "linux-x64": {"runner": "ubuntu-latest"},
+            "osx-x64": {"runner": "macos-latest"},
+            "osx-arm64": {"runner": "macos-latest"}
+          }'
+          
+          targets_input="${{ inputs.targets }}"
+          if [ "$targets_input" = "all" ] || [ -z "$targets_input" ]; then
+            selected_targets=$(echo "$full_mapping" | jq -c 'keys')
+          else
+            selected_targets=$(echo "$targets_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
+          fi
+          
+          configs_input="${{ inputs.configurations }}"
+          if [ "$configs_input" = "all" ] || [ -z "$configs_input" ]; then
+            configs='["Debug", "Release"]'
+          else
+            configs=$(echo "$configs_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
+          fi
+          
+          matrix_include=$(echo "$full_mapping" | jq -c --argjson targets "$selected_targets" --argjson configs "$configs" '
+            [
+              $targets[] as $t |
+              $configs[] as $c |
+              {target: $t, configuration: $c, runner: .[$t].runner}
+            ]
+          ')
+          
+          echo "matrix_include=$matrix_include" >> $GITHUB_OUTPUT
+
+  build:
+    name: Build ${{ matrix.target }} (${{ matrix.configuration }})
+    needs: setup
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.setup.outputs.matrix_include) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux Dependencies
+        if: matrix.target == 'linux-x64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxext-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev libxss-dev libxxf86vm-dev libasound2-dev libpulse-dev libdbus-1-dev
+
+      - name: Clone SDL2
+        run: |
+          git clone --branch release-2.32.10 https://github.com/libsdl-org/SDL.git sdl2-src
+
+      - name: Configure CMake
+        shell: bash
+        run: |
+          CMAKE_ARGS="-DSDL_STATIC=OFF -DSDL_SHARED=ON"
+          
+          if [[ "${{ matrix.target }}" == "osx-arm64" ]]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_OSX_ARCHITECTURES=arm64"
+          elif [[ "${{ matrix.target }}" == "osx-x64" ]]; then
+            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_OSX_ARCHITECTURES=x86_64"
+          fi
+          
+          cmake -S sdl2-src -B build $CMAKE_ARGS -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+
+      - name: Build
+        run: |
+          cmake --build build --config ${{ matrix.configuration }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdl2-${{ matrix.target }}-${{ matrix.configuration }}
+          path: |
+            build/**/*.dll
+            build/**/*.so
+            build/**/*.dylib
+            !build/**/CMakeFiles/**
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate Release Name
+        id: vars
+        run: |
+          timestamp=$(date +%s)
+          date_human=$(date +'%Y-%m-%d')
+          
+          release_name="sdl-deps-${{ github.run_number }}"
+          tag_name="sdl-deps-${{ github.run_number }}"
+          
+          echo "release_name=${release_name}" >> $GITHUB_OUTPUT
+          echo "tag_name=${tag_name}" >> $GITHUB_OUTPUT
+          
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "This release contains the native dependencies for SDL2." >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "Build Number: ${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "Date: ${date_human}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Zip Artifacts
+        run: |
+          cd artifacts
+          for d in sdl2-*; do
+            if [ -d "$d" ]; then
+              zip -r "${d}.zip" "$d"
+            fi
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag_name }}
+          name: ${{ steps.vars.outputs.release_name }}
+          body: ${{ steps.vars.outputs.body }}
+          files: artifacts/*.zip
+          draft: false
+          prerelease: true

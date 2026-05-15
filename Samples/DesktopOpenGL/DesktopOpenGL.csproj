@@ -20,7 +20,7 @@
 
   <PropertyGroup Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-')) or ('$(RuntimeIdentifier)' == '' and $([MSBuild]::IsOSPlatform('OSX')))">
     <OutputType>Exe</OutputType>
-    <DefineConstants>$(DefineConstants);MACOS_DESKTOP_OPENGL_HOST</DefineConstants>
+    <DefineConstants>$(DefineConstants);MACOS_DESKTOP_HOST</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
