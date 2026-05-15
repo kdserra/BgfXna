@@ -18,13 +18,3 @@ Projects:
 The current BGFX backend is represented by `IBgfxBackend`; these samples validate the XNA-facing integration path and are ready for concrete native bgfx backend bindings.
 
 `BrowserWebApp` supports `BrowserGraphicsBackends=WebGL`, `BrowserGraphicsBackends=WebGPU`, or `BrowserGraphicsBackends=Both`. `Both` chooses WebGPU when `navigator.gpu` exists and otherwise falls back to WebGL; use `?backend=webgl` or `?backend=webgpu` to override at runtime.
-
-**Note:** SDL2 is used as it makes it easy to support various Linux display managers like X11, Wayland, and more.
-
-Therefore, SDL2 is required to be installed on the target OS:
-
-- Windows: Automatically included.
-- MacOS: Run `brew install SDL2`
-- Linux (Ubuntu): Run `sudo apt install libsdl2-dev`
-- Linux (Other): Research how to install SDL2 for your distro.
-- Other: Automatically included.
