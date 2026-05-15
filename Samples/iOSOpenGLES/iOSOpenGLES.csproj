@@ -10,10 +10,6 @@
     <ApplicationId>com.bgfxna.samples.iosopengles</ApplicationId>
     <ApplicationTitle>BgfXna iOS OpenGLES Sample</ApplicationTitle>
     <ApplicationManifest>Info.plist</ApplicationManifest>
-    <BgfXnaIosNativeTarget Condition="'$(RuntimeIdentifier)' == '' or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('iossimulator-'))">ios-simulator</BgfXnaIosNativeTarget>
-    <BgfXnaIosNativeTarget Condition="'$(BgfXnaIosNativeTarget)' == ''">ios-arm64</BgfXnaIosNativeTarget>
-    <BgfXnaIosNativeRuntimeDirectory>$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(BgfXnaIosNativeTarget)</BgfXnaIosNativeRuntimeDirectory>
-    <BgfXnaIosNativeRuntimeDirectory Condition="!Exists('$(BgfXnaIosNativeRuntimeDirectory)') and Exists('$(BgfXnaNativeRuntimeRoot)Release\$(BgfXnaIosNativeTarget)')">$(BgfXnaNativeRuntimeRoot)Release\$(BgfXnaIosNativeTarget)</BgfXnaIosNativeRuntimeDirectory>
   </PropertyGroup>
 
   <ItemGroup>

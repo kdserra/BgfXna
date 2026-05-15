@@ -43,16 +43,16 @@
   </Target>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-ios'">
+    <BgfXnaIosNativeConfiguration Condition="'$(BgfXnaIosNativeConfiguration)' == ''">Release</BgfXnaIosNativeConfiguration>
     <BgfXnaIosNativeTarget Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('iossimulator-'))">ios-simulator</BgfXnaIosNativeTarget>
     <BgfXnaIosNativeTarget Condition="'$(BgfXnaIosNativeTarget)' == ''">ios-arm64</BgfXnaIosNativeTarget>
-    <BgfXnaIosNativeRuntimeDirectory>$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(BgfXnaIosNativeTarget)</BgfXnaIosNativeRuntimeDirectory>
-    <BgfXnaIosNativeRuntimeDirectory Condition="!Exists('$(BgfXnaIosNativeRuntimeDirectory)') and Exists('$(BgfXnaNativeRuntimeRoot)Release\$(BgfXnaIosNativeTarget)')">$(BgfXnaNativeRuntimeRoot)Release\$(BgfXnaIosNativeTarget)</BgfXnaIosNativeRuntimeDirectory>
+    <BgfXnaIosNativeRuntimeDirectory>$(BgfXnaNativeRuntimeRoot)$(BgfXnaIosNativeConfiguration)\$(BgfXnaIosNativeTarget)</BgfXnaIosNativeRuntimeDirectory>
   </PropertyGroup>
 
   <Target Name="BgfXnaRequireIosNativeBgfx"
           BeforeTargets="Build"
           Condition="'$(TargetFramework)' == 'net10.0-ios' and '$(MSBuildProjectName)' != 'BgfXna' and '$(DesignTimeBuild)' != 'true' and !Exists('$(BgfXnaIosNativeRuntimeDirectory)')">
-    <Error Text="BGFX iOS native libraries were not found at '$(BgfXnaNativeRuntimeRoot)$(Configuration)\$(BgfXnaIosNativeTarget)' or matching Release fallback. Build them on macOS with: dotnet run ./scripts/build-bgfx.cs -- --target $(BgfXnaIosNativeTarget) --configuration Release --source-root native-src --skip-clone" />
+    <Error Text="BGFX iOS native libraries were not found at '$(BgfXnaIosNativeRuntimeDirectory)'. Build them on macOS with: dotnet run ./scripts/build-bgfx.cs -- --target $(BgfXnaIosNativeTarget) --configuration $(BgfXnaIosNativeConfiguration) --source-root native-src --skip-clone" />
   </Target>
 
   <Target Name="BgfXnaValidateIosNativeBgfx"
