@@ -16,31 +16,52 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      targets: ${{ steps.parse.outputs.targets }}
-      configurations: ${{ steps.parse.outputs.configurations }}
+      matrix_include: ${{ steps.parse.outputs.matrix_include }}
     steps:
       - id: parse
         run: |
+          full_mapping='{
+            "win-x64": "windows-latest",
+            "linux-x64": "ubuntu-latest",
+            "linux-arm64": "ubuntu-24.04-arm",
+            "osx-x64": "macos-13",
+            "osx-arm64": "macos-latest",
+            "android-arm": "ubuntu-latest",
+            "android-arm64": "ubuntu-latest",
+            "android-x86": "ubuntu-latest",
+            "android-x64": "ubuntu-latest",
+            "android-vulkan-arm": "ubuntu-latest",
+            "android-vulkan-arm64": "ubuntu-latest",
+            "android-vulkan-x86": "ubuntu-latest",
+            "android-vulkan-x64": "ubuntu-latest",
+            "browser-wasm": "ubuntu-latest",
+            "ios-arm64": "macos-latest",
+            "ios-simulator": "macos-latest"
+          }'
+          
           targets_input="${{ inputs.targets }}"
-          echo "Raw targets input: $targets_input"
           if [ "$targets_input" = "all" ] || [ -z "$targets_input" ]; then
-            targets='["win-x64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64", "android-arm", "android-arm64", "android-x86", "android-x64", "android-vulkan-arm", "android-vulkan-arm64", "android-vulkan-x86", "android-vulkan-x64", "browser-wasm", "ios-arm64", "ios-simulator"]'
+            selected_targets=$(echo "$full_mapping" | jq -c 'keys')
           else
-            targets=$(echo "$targets_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
+            selected_targets=$(echo "$targets_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
           fi
-          echo "Parsed targets: $targets"
           
           configs_input="${{ inputs.configurations }}"
-          echo "Raw configs input: $configs_input"
           if [ "$configs_input" = "all" ] || [ -z "$configs_input" ]; then
             configs='["Debug", "Release"]'
           else
             configs=$(echo "$configs_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
           fi
-          echo "Parsed configs: $configs"
           
-          echo "targets=$targets" >> $GITHUB_OUTPUT
-          echo "configurations=$configs" >> $GITHUB_OUTPUT
+          matrix_include=$(echo "$full_mapping" | jq -c --argjson targets "$selected_targets" --argjson configs "$configs" '
+            [
+              $targets[] as $t |
+              $configs[] as $c |
+              {target: $t, configuration: $c, os: .[$t]}
+            ]
+          ')
+          
+          echo "matrix_include=$matrix_include" >> $GITHUB_OUTPUT
 
   build:
     name: Build ${{ matrix.target }} (${{ matrix.configuration }})
@@ -49,41 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: ${{ fromJSON(needs.setup.outputs.targets) }}
-        configuration: ${{ fromJSON(needs.setup.outputs.configurations) }}
-        include:
-          - target: win-x64
-            os: windows-latest
-          - target: linux-x64
-            os: ubuntu-latest
-          - target: linux-arm64
-            os: ubuntu-24.04-arm
-          - target: osx-x64
-            os: macos-13
-          - target: osx-arm64
-            os: macos-latest
-          - target: android-arm
-            os: ubuntu-latest
-          - target: android-arm64
-            os: ubuntu-latest
-          - target: android-x86
-            os: ubuntu-latest
-          - target: android-x64
-            os: ubuntu-latest
-          - target: android-vulkan-arm
-            os: ubuntu-latest
-          - target: android-vulkan-arm64
-            os: ubuntu-latest
-          - target: android-vulkan-x86
-            os: ubuntu-latest
-          - target: android-vulkan-x64
-            os: ubuntu-latest
-          - target: browser-wasm
-            os: ubuntu-latest
-          - target: ios-arm64
-            os: macos-latest
-          - target: ios-simulator
-            os: macos-latest
+        include: ${{ fromJSON(needs.setup.outputs.matrix_include) }}
 
     steps:
       - name: Checkout
