@@ -142,7 +142,7 @@ else if (options.IsDesktopUnix)
     string expectedName = options.Configuration.Equals("Debug", StringComparison.OrdinalIgnoreCase)
         ? $"libbgfx_debug{extension}"
         : $"libbgfx{extension}";
-    var libraries = FindBuiltLibraries(Path.Combine(bgfxPath, ".build"), options.Configuration, extension);
+    var libraries = FindBuiltLibraries(bgfxPath, options.Configuration, extension);
     Console.WriteLine($"Found {libraries.Count} built libraries for configuration {options.Configuration}:");
     foreach (var l in libraries) Console.WriteLine($"  {l}");
     
@@ -603,6 +603,21 @@ static string FindGenie(string bxPath)
                 
                 if (process.ExitCode == 0)
                 {
+                    // Patch makefiles to remove -m64 on Arm64
+                    string genieMakeDirectory = Path.Combine(genieSourcePath, "build", "gmake.linux");
+                    if (Directory.Exists(genieMakeDirectory))
+                    {
+                        foreach (string file in Directory.GetFiles(genieMakeDirectory, "*.make"))
+                        {
+                            string content = File.ReadAllText(file);
+                            if (content.Contains("-m64"))
+                            {
+                                File.WriteAllText(file, content.Replace("-m64", ""));
+                                Console.WriteLine($"Patched {Path.GetFileName(file)} to remove -m64");
+                            }
+                        }
+                    }
+
                     Console.WriteLine("Building GENie from source...");
                     var makeProcess = new System.Diagnostics.Process
                     {
