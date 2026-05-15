@@ -138,7 +138,7 @@ jobs:
             # Disable code signing and tests for CI on Apple platforms
             CMAKE_ARGS="$CMAKE_ARGS -DSDL_TESTS=OFF -DSDL_TEST=OFF -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY='' -DCMAKE_XCODE_ATTRIBUTE_PRODUCT_MODULE_NAME=SDL3"
             if [[ "${{ matrix.target }}" == "visionos" ]]; then
-              CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_XCODE_ATTRIBUTE_SWIFT_OBJC_BRIDGING_HEADER=\"${GITHUB_WORKSPACE}/sdl-src/src/video/uikit/SDL_UIKitBridge-swift.h\""
+              CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_XCODE_ATTRIBUTE_SWIFT_OBJC_BRIDGING_HEADER=${GITHUB_WORKSPACE}/sdl-src/src/video/uikit/SDL_UIKitBridge-swift.h"
             fi
           fi
           
