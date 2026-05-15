@@ -43,7 +43,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
     public void Initialize(GraphicsDeviceOptions options)
     {
-        if (options.NativeWindowHandle == IntPtr.Zero && !IsBrowserRuntime())
+        if (options.NativeWindowHandle == IntPtr.Zero && !IsBrowserRuntime() && options.Backend != GraphicsBackend.Noop)
         {
             throw new InvalidOperationException(
                 "A native window handle is required to initialize BGFX."
@@ -873,6 +873,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             GraphicsBackend.OpenGLES => bgfx.RendererType.OpenGLES,
             GraphicsBackend.WebGL => bgfx.RendererType.OpenGLES,
             GraphicsBackend.WebGPU => bgfx.RendererType.WebGPU,
+            GraphicsBackend.Noop => bgfx.RendererType.Noop,
             _ => bgfx.RendererType.Count,
         };
 
@@ -886,6 +887,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             bgfx.RendererType.OpenGL => GraphicsBackend.OpenGL,
             bgfx.RendererType.OpenGLES => GraphicsBackend.OpenGLES,
             bgfx.RendererType.WebGPU => GraphicsBackend.WebGPU,
+            bgfx.RendererType.Noop => GraphicsBackend.Noop,
             _ => GraphicsBackend.Auto,
         };
 

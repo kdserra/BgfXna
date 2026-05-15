@@ -13,6 +13,8 @@ internal static class Program
             await BrowserGameHost.RunAsync();
 #elif WINDOWS_DESKTOP_HOST || LINUX_DESKTOP_HOST || MACOS_DESKTOP_HOST
             SdlGameHost.Run();
+#elif HEADLESS_HOST
+            HeadlessGameHost.Run();
 #elif IOS_GAME_HOST
             iOSGameHost.Run(args);
 #else

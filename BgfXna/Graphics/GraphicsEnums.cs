@@ -10,7 +10,8 @@ public enum GraphicsBackend
     OpenGL,
     OpenGLES,
     WebGL,
-    WebGPU
+    WebGPU,
+    Noop
 }
 
 public enum SurfaceFormat

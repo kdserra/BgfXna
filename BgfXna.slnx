@@ -9,6 +9,7 @@
     <Project Path="Samples/BrowserWebApp/BrowserWebApp.csproj" />
     <Project Path="Samples/DesktopOpenGL/DesktopOpenGL.csproj" />
     <Project Path="Samples/DesktopVulkan/DesktopVulkan.csproj" />
+    <Project Path="Samples/DesktopHeadless/DesktopHeadless.csproj" />
     <Project Path="Samples/iOSMetal/iOSMetal.csproj" />
     <Project Path="Samples/MacMetal/MacMetal.csproj" />
     <Project Path="Samples/WindowsDX11/WindowsDX11.csproj" />

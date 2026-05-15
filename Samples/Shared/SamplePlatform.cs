@@ -33,6 +33,8 @@ internal static class SamplePlatform
     private const GraphicsBackend CompileTimeBackend = GraphicsBackend.WebGL;
 #elif SAMPLE_BACKEND_WEBGPU
     private const GraphicsBackend CompileTimeBackend = GraphicsBackend.WebGPU;
+#elif SAMPLE_BACKEND_NOOP
+    private const GraphicsBackend CompileTimeBackend = GraphicsBackend.Noop;
 #else
     private const GraphicsBackend CompileTimeBackend = GraphicsBackend.Auto;
 #endif
