@@ -2,19 +2,51 @@ name: Build BGFX
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
+    inputs:
+      targets:
+        description: 'Comma-separated list of platforms to build (e.g., win-x64,linux-x64) or "all"'
+        default: 'all'
+        required: false
+      configurations:
+        description: 'Comma-separated list of configurations to build (Debug,Release) or "all"'
+        default: 'all'
+        required: false
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      targets: ${{ steps.parse.outputs.targets }}
+      configurations: ${{ steps.parse.outputs.configurations }}
+    steps:
+      - id: parse
+        run: |
+          targets_input="${{ github.event.inputs.targets }}"
+          if [ "$targets_input" = "all" ] || [ -z "$targets_input" ]; then
+            targets='["win-x64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64", "android-arm", "android-arm64", "android-x86", "android-x64", "android-vulkan-arm", "android-vulkan-arm64", "android-vulkan-x86", "android-vulkan-x64", "browser-wasm", "ios-arm64", "ios-simulator"]'
+          else
+            targets=$(echo "$targets_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
+          fi
+          
+          configs_input="${{ github.event.inputs.configurations }}"
+          if [ "$configs_input" = "all" ] || [ -z "$configs_input" ]; then
+            configs='["Debug", "Release"]'
+          else
+            configs=$(echo "$configs_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
+          fi
+          
+          echo "targets=$targets" >> $GITHUB_OUTPUT
+          echo "configurations=$configs" >> $GITHUB_OUTPUT
+
   build:
     name: Build ${{ matrix.target }} (${{ matrix.configuration }})
+    needs: setup
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        target: [win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64, android-arm, android-arm64, android-x86, android-x64, android-vulkan-arm, android-vulkan-arm64, android-vulkan-x86, android-vulkan-x64, browser-wasm, ios-arm64, ios-simulator]
-        configuration: [Debug, Release]
+        target: ${{ fromJSON(needs.setup.outputs.targets) }}
+        configuration: ${{ fromJSON(needs.setup.outputs.configurations) }}
         include:
           - target: win-x64
             os: windows-latest
@@ -61,6 +93,13 @@ jobs:
       - name: Setup Emscripten
         if: matrix.target == 'browser-wasm'
         uses: emscripten-core/setup-emsdk@v11
+
+      - name: Clean native-src
+        shell: pwsh
+        run: |
+          if (Test-Path native-src) {
+            Remove-Item -Recurse -Force native-src
+          }
 
       - name: Build
         run: dotnet run scripts/build-bgfx.cs -- --target ${{ matrix.target }} --configuration ${{ matrix.configuration }} --source-root native-src
