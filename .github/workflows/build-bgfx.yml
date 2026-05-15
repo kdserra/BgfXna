@@ -22,7 +22,7 @@ jobs:
         run: |
           full_mapping='{
             "win-x64": "windows-latest",
-            "linux-x64": "ubuntu-20.04",
+            "linux-x64": "ubuntu-latest",
             "linux-arm64": "ubuntu-24.04-arm",
             "osx-x64": "macos-latest",
             "osx-arm64": "macos-latest",

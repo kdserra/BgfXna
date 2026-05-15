@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright 2011-2026 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
@@ -28,9 +28,9 @@ namespace Bgfx
 #elif IOS
         const string DllName = "__Internal";
 #elif DEBUG
-        const string DllName = "bgfx_debug";
+        const string DllName = "bgfx_debug.dll";
 #else
-        const string DllName = "bgfx";
+        const string DllName = "bgfx.dll";
 #endif
     }
 }
