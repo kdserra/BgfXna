@@ -128,6 +128,8 @@ jobs:
           GENERATOR_ARGS=""
           if [[ "${{ matrix.target }}" == osx-* ]] || [[ "${{ matrix.target }}" == "ios-arm64" ]] || [[ "${{ matrix.target }}" == "tvos" ]] || [[ "${{ matrix.target }}" == "visionos" ]]; then
             GENERATOR_ARGS="-G Xcode"
+            # Disable code signing and tests for CI on Apple platforms
+            CMAKE_ARGS="$CMAKE_ARGS -DSDL_TESTS=OFF -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO"
           fi
           
           cmake -S sdl-src -B build $GENERATOR_ARGS $CMAKE_ARGS -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
