@@ -29,48 +29,48 @@ internal sealed class SdlAutoPongWindow : IDisposable
 
     public SdlAutoPongWindow()
     {
-        if (SDL_Init(0x00000020) != 0) // SDL_INIT_VIDEO
+        if (!SDL_Init(0x00000020)) // SDL_INIT_VIDEO
         {
             throw new InvalidOperationException($"SDL_Init failed: {Marshal.PtrToStringAnsi(SDL_GetError())}");
         }
 
         // Create window
-        _window = SDL_CreateWindow($"BgfXna AutoPong - {SamplePlatform.Backend}", 100, 100, Width, Height, 0x4); // SDL_WINDOW_SHOWN
+        _window = SDL_CreateWindow($"BgfXna AutoPong - {SamplePlatform.Backend}", Width, Height, 0); 
         if (_window == IntPtr.Zero)
         {
             throw new InvalidOperationException($"SDL_CreateWindow failed: {Marshal.PtrToStringAnsi(SDL_GetError())}");
         }
 
-        SDL_SysWMinfo info = default;
-        info.version_major = 2;
-        info.version_minor = 0;
-        info.version_patch = 0;
-
-        if (!SDL_GetWindowWMInfo(_window, ref info))
-        {
-            throw new InvalidOperationException("SDL_GetWindowWMInfo failed.");
-        }
-
+        uint props = SDL_GetWindowProperties(_window);
         IntPtr windowHandle = IntPtr.Zero;
         IntPtr displayHandle = IntPtr.Zero;
 
-        // subsystem values:
-        // 1 = Windows
-        // 2 = X11
-        // 4 = Cocoa (macOS)
-        // 6 = Wayland
-        if (info.subsystem == 1 || info.subsystem == 4) // Windows or Cocoa
+        // Try Windows
+        windowHandle = SDL_GetPointerProperty(props, "SDL.window.win32.hwnd", IntPtr.Zero);
+        
+        // Try Cocoa (macOS)
+        if (windowHandle == IntPtr.Zero)
         {
-            windowHandle = info.display_or_hwnd; // This is hwnd or NSWindow
+            windowHandle = SDL_GetPointerProperty(props, "SDL.window.cocoa.window", IntPtr.Zero);
         }
-        else if (info.subsystem == 2 || info.subsystem == 6) // X11 or Wayland
+        
+        // Try X11 (Linux)
+        if (windowHandle == IntPtr.Zero)
         {
-            displayHandle = info.display_or_hwnd; // This is display
-            windowHandle = info.window_or_surface; // This is window or surface
+            windowHandle = SDL_GetPointerProperty(props, "SDL.window.x11.window", IntPtr.Zero);
+            displayHandle = SDL_GetPointerProperty(props, "SDL.window.x11.display", IntPtr.Zero);
         }
-        else
+        
+        // Try Wayland (Linux)
+        if (windowHandle == IntPtr.Zero)
         {
-            throw new NotSupportedException($"Unsupported SDL subsystem: {info.subsystem}");
+            windowHandle = SDL_GetPointerProperty(props, "SDL.window.wayland.surface", IntPtr.Zero);
+            displayHandle = SDL_GetPointerProperty(props, "SDL.window.wayland.display", IntPtr.Zero);
+        }
+
+        if (windowHandle == IntPtr.Zero)
+        {
+            throw new NotSupportedException("Could not retrieve native window handle from SDL3.");
         }
 
         _game.SetNativeWindowHandle(windowHandle, displayHandle);
@@ -120,41 +120,30 @@ internal sealed class SdlAutoPongWindow : IDisposable
         SDL_Quit();
     }
 
-    // SDL2 P/Invokes
-    // Use "SDL2" for cross-platform compatibility.
-    // On Windows it loads SDL2.dll, on Linux libSDL2.so/libSDL2-2.0.so.0, on macOS libSDL2.dylib
-    [DllImport("SDL2")]
-    private static extern int SDL_Init(uint flags);
+    // SDL3 P/Invokes
+    [DllImport("SDL3")]
+    private static extern bool SDL_Init(uint flags);
 
-    [DllImport("SDL2")]
-    private static extern IntPtr SDL_CreateWindow(string title, int x, int y, int w, int h, uint flags);
+    [DllImport("SDL3")]
+    private static extern IntPtr SDL_CreateWindow(string title, int w, int h, uint flags);
 
-    [DllImport("SDL2")]
+    [DllImport("SDL3")]
     private static extern void SDL_DestroyWindow(IntPtr window);
 
-    [DllImport("SDL2")]
+    [DllImport("SDL3")]
     private static extern void SDL_Quit();
 
-    [DllImport("SDL2")]
-    private static extern bool SDL_GetWindowWMInfo(IntPtr window, ref SDL_SysWMinfo info);
+    [DllImport("SDL3")]
+    private static extern uint SDL_GetWindowProperties(IntPtr window);
 
-    [DllImport("SDL2")]
+    [DllImport("SDL3")]
+    private static extern IntPtr SDL_GetPointerProperty(uint props, string name, IntPtr default_value);
+
+    [DllImport("SDL3")]
     private static extern int SDL_PollEvent(out SDL_Event ev);
 
-    [DllImport("SDL2")]
+    [DllImport("SDL3")]
     private static extern IntPtr SDL_GetError();
-
-    [StructLayout(LayoutKind.Explicit)]
-    private struct SDL_SysWMinfo
-    {
-        [FieldOffset(0)] public byte version_major;
-        [FieldOffset(1)] public byte version_minor;
-        [FieldOffset(2)] public byte version_patch;
-        [FieldOffset(4)] public int subsystem;
-        
-        [FieldOffset(8)] public IntPtr display_or_hwnd;
-        [FieldOffset(16)] public IntPtr window_or_surface;
-    }
 
     [StructLayout(LayoutKind.Explicit, Size = 56)]
     private struct SDL_Event

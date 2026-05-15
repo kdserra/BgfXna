@@ -1,4 +1,4 @@
-name: Build SDL2
+name: Build SDL3
 
 on:
   workflow_dispatch:
@@ -72,9 +72,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libx11-dev libxext-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev libxss-dev libxxf86vm-dev libasound2-dev libpulse-dev libdbus-1-dev
 
-      - name: Clone SDL2
+      - name: Clone SDL3
         run: |
-          git clone --branch release-2.32.10 https://github.com/libsdl-org/SDL.git sdl2-src
+          git clone --branch main https://github.com/libsdl-org/SDL.git sdl-src
 
       - name: Configure CMake
         shell: bash
@@ -89,7 +89,7 @@ jobs:
             CMAKE_ARGS="$CMAKE_ARGS -A ARM64"
           fi
           
-          cmake -S sdl2-src -B build $CMAKE_ARGS -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+          cmake -S sdl-src -B build $CMAKE_ARGS -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
 
       - name: Build
         run: |
@@ -105,7 +105,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sdl2-${{ matrix.target }}-${{ matrix.configuration }}
+          name: sdl3-${{ matrix.target }}-${{ matrix.configuration }}
           path: dist/
 
   release:

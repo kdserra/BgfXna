@@ -122,11 +122,11 @@ jobs:
           
           if [ -n "$latest_tag" ]; then
             echo "Downloading SDL2 from release $latest_tag"
-            gh release download "$latest_tag" --pattern "sdl2-${{ matrix.target }}-${{ matrix.configuration }}.zip" --dir sdl_download || true
+            gh release download "$latest_tag" --pattern "sdl3-${{ matrix.target }}-${{ matrix.configuration }}.zip" --dir sdl_download || true
             
-            if [ -f sdl_download/sdl2-${{ matrix.target }}-${{ matrix.configuration }}.zip ]; then
+            if [ -f sdl_download/sdl3-${{ matrix.target }}-${{ matrix.configuration }}.zip ]; then
               mkdir -p sdl_extracted
-              unzip -o sdl_download/sdl2-${{ matrix.target }}-${{ matrix.configuration }}.zip -d sdl_extracted
+              unzip -o sdl_download/sdl3-${{ matrix.target }}-${{ matrix.configuration }}.zip -d sdl_extracted
               
               # Determine target folder
               TARGET_DIR="native/bgfx/bin/${{ matrix.configuration }}/${{ matrix.target }}"
