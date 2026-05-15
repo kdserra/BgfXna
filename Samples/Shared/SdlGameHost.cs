@@ -1,4 +1,4 @@
-#if LINUX_DESKTOP_HOST
+#if WINDOWS_DESKTOP_HOST || LINUX_DESKTOP_HOST || MACOS_DESKTOP_HOST
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -6,16 +6,16 @@ using Microsoft.Xna.Framework;
 
 namespace BgfXna.Samples;
 
-internal static class LinuxGameHost
+internal static class SdlGameHost
 {
     public static void Run()
     {
-        using SDL2AutoPongWindow window = new();
+        using SdlAutoPongWindow window = new();
         window.Run();
     }
 }
 
-internal sealed class SDL2AutoPongWindow : IDisposable
+internal sealed class SdlAutoPongWindow : IDisposable
 {
     private const int Width = 1280;
     private const int Height = 720;
@@ -27,7 +27,7 @@ internal sealed class SDL2AutoPongWindow : IDisposable
     private TimeSpan _lastFrame;
     private bool _running;
 
-    public SDL2AutoPongWindow()
+    public SdlAutoPongWindow()
     {
         if (SDL_Init(0x00000020) != 0) // SDL_INIT_VIDEO
         {
@@ -51,10 +51,29 @@ internal sealed class SDL2AutoPongWindow : IDisposable
             throw new InvalidOperationException("SDL_GetWindowWMInfo failed.");
         }
 
-        IntPtr display = info.display;
-        IntPtr window_or_surface = info.window_or_surface;
+        IntPtr windowHandle = IntPtr.Zero;
+        IntPtr displayHandle = IntPtr.Zero;
 
-        _game.SetNativeWindowHandle(window_or_surface, display);
+        // subsystem values:
+        // 1 = Windows
+        // 2 = X11
+        // 4 = Cocoa (macOS)
+        // 6 = Wayland
+        if (info.subsystem == 1 || info.subsystem == 4) // Windows or Cocoa
+        {
+            windowHandle = info.display_or_hwnd; // This is hwnd or NSWindow
+        }
+        else if (info.subsystem == 2 || info.subsystem == 6) // X11 or Wayland
+        {
+            displayHandle = info.display_or_hwnd; // This is display
+            windowHandle = info.window_or_surface; // This is window or surface
+        }
+        else
+        {
+            throw new NotSupportedException($"Unsupported SDL subsystem: {info.subsystem}");
+        }
+
+        _game.SetNativeWindowHandle(windowHandle, displayHandle);
     }
 
     public void Run()
@@ -102,6 +121,8 @@ internal sealed class SDL2AutoPongWindow : IDisposable
     }
 
     // SDL2 P/Invokes
+    // Use "SDL2" for cross-platform compatibility.
+    // On Windows it loads SDL2.dll, on Linux libSDL2.so/libSDL2-2.0.so.0, on macOS libSDL2.dylib
     [DllImport("SDL2")]
     private static extern int SDL_Init(uint flags);
 
@@ -131,7 +152,7 @@ internal sealed class SDL2AutoPongWindow : IDisposable
         [FieldOffset(2)] public byte version_patch;
         [FieldOffset(4)] public int subsystem;
         
-        [FieldOffset(8)] public IntPtr display;
+        [FieldOffset(8)] public IntPtr display_or_hwnd;
         [FieldOffset(16)] public IntPtr window_or_surface;
     }
 

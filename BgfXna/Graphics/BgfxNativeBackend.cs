@@ -542,9 +542,9 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
     private uint ToRgba(Color color)
     {
-        if (_rendererType == bgfx.RendererType.Vulkan)
+        if (_rendererType == bgfx.RendererType.Vulkan && !System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
         {
-            // Swap Red and Blue channels for Vulkan to fix orange background bug
+            // Swap Red and Blue channels for Vulkan to fix orange background bug on Linux
             return (uint)(color.B << 24 | color.G << 16 | color.R << 8 | color.A);
         }
         return (uint)(color.R << 24 | color.G << 16 | color.B << 8 | color.A);

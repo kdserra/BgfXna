@@ -1,11 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-macos</TargetFramework>
     <RuntimeIdentifiers>osx-x64;osx-arm64</RuntimeIdentifiers>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <DefineConstants>$(DefineConstants);SAMPLE_BACKEND_METAL</DefineConstants>
+    <DefineConstants>$(DefineConstants);SAMPLE_BACKEND_METAL;MACOS_DESKTOP_HOST</DefineConstants>
     <AssemblyName>BgfXna.Sample.MacMetal</AssemblyName>
   </PropertyGroup>
 

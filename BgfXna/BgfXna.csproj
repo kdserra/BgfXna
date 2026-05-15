@@ -22,7 +22,7 @@
   <ItemGroup>
     <Content Include="runtimes\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Link>%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <Link>%(Filename)%(Extension)</Link>
     </Content>
   </ItemGroup>
 
