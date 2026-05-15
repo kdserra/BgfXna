@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       targets:
-        description: 'Comma-separated list of platforms to build or "all". Supported: win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64, android-x86, android-x64, android-arm64, android-arm7, ios-arm64, windows-gdk, emscripten, steamos, tvos, visionos'
+        description: 'Comma-separated list of platforms to build or "all". Supported: win-x64, win-arm64, linux-x64, linux-arm64, osx-x64, osx-arm64, android-x86, android-x64, android-arm64, android-arm7, ios-arm64, windows-gdk, emscripten, steamos, tvos'
         default: 'all'
         required: false
       configurations:
@@ -35,8 +35,7 @@ jobs:
             "windows-gdk": {"runner": "windows-latest"},
             "emscripten": {"runner": "ubuntu-latest"},
             "steamos": {"runner": "ubuntu-latest"},
-            "tvos": {"runner": "macos-latest"},
-            "visionos": {"runner": "macos-latest"}
+            "tvos": {"runner": "macos-latest"}
           }'
           
           targets_input="${{ inputs.targets }}"
@@ -90,18 +89,10 @@ jobs:
         run: |
           git clone --branch main https://github.com/libsdl-org/SDL.git sdl-src
 
-      - name: Patch SDL3 CMakeLists for visionOS Swift
-        if: matrix.target == 'visionos'
-        shell: bash
-        run: |
-          sed -i '' 's/LANGUAGES C VERSION/LANGUAGES C Swift VERSION/' sdl-src/CMakeLists.txt
-          sed -i '' 's|src/video/uikit/\*.m"|src/video/uikit/*.m" "${SDL3_SOURCE_DIR}/src/video/uikit/*.swift"|' sdl-src/CMakeLists.txt
-          sed -i '' 's/-idirafter/-I/g' sdl-src/CMakeLists.txt
-
       - name: Configure CMake
         shell: bash
         run: |
-          if [[ "${{ matrix.target }}" == "emscripten" ]] || [[ "${{ matrix.target }}" == "visionos" ]]; then
+          if [[ "${{ matrix.target }}" == "emscripten" ]]; then
             CMAKE_ARGS="-DSDL_STATIC=ON -DSDL_SHARED=OFF"
           else
             CMAKE_ARGS="-DSDL_STATIC=OFF -DSDL_SHARED=ON"
@@ -134,13 +125,10 @@ jobs:
           fi
           
           GENERATOR_ARGS=""
-          if [[ "${{ matrix.target }}" == osx-* ]] || [[ "${{ matrix.target }}" == "ios-arm64" ]] || [[ "${{ matrix.target }}" == "tvos" ]] || [[ "${{ matrix.target }}" == "visionos" ]]; then
+          if [[ "${{ matrix.target }}" == osx-* ]] || [[ "${{ matrix.target }}" == "ios-arm64" ]] || [[ "${{ matrix.target }}" == "tvos" ]]; then
             GENERATOR_ARGS="-G Xcode"
             # Disable code signing and tests for CI on Apple platforms
             CMAKE_ARGS="$CMAKE_ARGS -DSDL_TESTS=OFF -DSDL_TEST=OFF -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY='' -DCMAKE_XCODE_ATTRIBUTE_PRODUCT_MODULE_NAME=SDL3"
-            if [[ "${{ matrix.target }}" == "visionos" ]]; then
-              CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_XCODE_ATTRIBUTE_SWIFT_OBJC_BRIDGING_HEADER=${GITHUB_WORKSPACE}/sdl-src/src/video/uikit/SDL_UIKitBridge-swift.h"
-            fi
           fi
           
           cmake -S sdl-src -B build $GENERATOR_ARGS $CMAKE_ARGS -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
