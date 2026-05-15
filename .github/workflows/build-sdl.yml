@@ -130,6 +130,7 @@ jobs:
             GENERATOR_ARGS="-G Xcode"
           fi
           
+          cmake -S sdl-src -B build $GENERATOR_ARGS $CMAKE_ARGS -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
 
       - name: Build
         run: |
