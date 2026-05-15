@@ -1,8 +1,5 @@
 <Solution>
   <Folder Name="/Samples/">
-    <Project Path="Samples/AndroidOpenGL/AndroidOpenGL.csproj">
-      <Deploy />
-    </Project>
     <Project Path="Samples/AndroidOpenGLES/AndroidOpenGLES.csproj">
       <Deploy />
     </Project>
