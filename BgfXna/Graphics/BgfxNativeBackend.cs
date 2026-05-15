@@ -61,7 +61,8 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
         {
             bgfx.Init init;
             bgfx.init_ctor(&init);
-            init.type = ToBgfxRenderer(options.Backend);
+            GraphicsBackend backend = NormalizeBackend(options.Backend);
+            init.type = ToBgfxRenderer(backend);
             if (options.NativeWindowHandle != IntPtr.Zero)
             {
                 init.platformData.nwh = options.NativeWindowHandle.ToPointer();
@@ -80,6 +81,11 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
                 : (uint)bgfx.ResetFlags.None;
             init.resolution.formatColor = ToBgfxTextureFormat(options.BackBufferFormat);
             init.resolution.formatDepthStencil = ToBgfxTextureFormat(options.DepthStencilFormat);
+            if (RequiresSingleThreadedRenderer())
+            {
+                bgfx.render_frame(-1);
+            }
+
             initialized = bgfx.init(&init);
         }
         catch (DllNotFoundException exception)
@@ -823,6 +829,24 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
         }
 
         return flags;
+    }
+
+    private static GraphicsBackend NormalizeBackend(GraphicsBackend backend)
+    {
+#if IOS
+        return backend == GraphicsBackend.Auto ? GraphicsBackend.Metal : backend;
+#else
+        return backend;
+#endif
+    }
+
+    private static bool RequiresSingleThreadedRenderer()
+    {
+#if IOS
+        return true;
+#else
+        return false;
+#endif
     }
 
     private static bgfx.RendererType ToBgfxRenderer(GraphicsBackend backend) =>

@@ -85,7 +85,7 @@ namespace NS::Private
 // with Foundation/Metal framework Obj-C declarations of the same symbols.
 #define _NS_PRIVATE_DEF_CONST(type, symbol) \
     type const             NS::symbol = Private::LoadSymbol<type>("NS" #symbol)
-#elif defined(__MAC_26_0) || defined(__IPHONE_26_0) || defined(__TVOS_26_0)
+#elif !defined(BGFXNA_FORCE_METALCPP_DLSYM_CONSTANTS) && (defined(__MAC_26_0) || defined(__IPHONE_26_0) || defined(__TVOS_26_0))
 #define _NS_PRIVATE_DEF_CONST(type, symbol)              \
     _NS_EXTERN type const NS##symbol _NS_PRIVATE_IMPORT; \
     type const                       NS::symbol = (nullptr != &NS##symbol) ? NS##symbol : type()
@@ -2910,7 +2910,7 @@ namespace MTL::Private
 
 #define _MTL_PRIVATE_DEF_WEAK_CONST(type, symbol) _MTL_PRIVATE_DEF_CONST(type, symbol)
 
-#elif defined(__MAC_26_0) || defined(__IPHONE_26_0) || defined(__TVOS_26_0)
+#elif !defined(BGFXNA_FORCE_METALCPP_DLSYM_CONSTANTS) && (defined(__MAC_26_0) || defined(__IPHONE_26_0) || defined(__TVOS_26_0))
 
 #define _MTL_PRIVATE_DEF_STR(type, symbol)                  \
     _MTL_EXTERN type const MTL##symbol _MTL_PRIVATE_IMPORT; \

@@ -5,10 +5,10 @@
     <SupportedOSPlatformVersion>12.2</SupportedOSPlatformVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <DefineConstants>$(DefineConstants);SAMPLE_BACKEND_OPENGL;IOS_GAME_HOST</DefineConstants>
-    <AssemblyName>BgfXna.Sample.iOSOpenGL</AssemblyName>
-    <ApplicationId>com.bgfxna.samples.iosopengl</ApplicationId>
-    <ApplicationTitle>BgfXna iOS OpenGL Sample</ApplicationTitle>
+    <DefineConstants>$(DefineConstants);SAMPLE_BACKEND_METAL;IOS_GAME_HOST</DefineConstants>
+    <AssemblyName>BgfXna.Sample.iOSMetal</AssemblyName>
+    <ApplicationId>com.bgfxna.samples.iosmetal</ApplicationId>
+    <ApplicationTitle>BgfXna iOS Metal Sample</ApplicationTitle>
     <ApplicationManifest>Info.plist</ApplicationManifest>
   </PropertyGroup>
 
