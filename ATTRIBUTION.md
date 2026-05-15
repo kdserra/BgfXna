@@ -190,6 +190,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
+-------------------------------------------------------------------------------
+
 ## FNA
 
 https://github.com/FNA-XNA/FNA
@@ -319,7 +321,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
----
+-------------------------------------------------------------------------------
 
 ## SDL
 
