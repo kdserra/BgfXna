@@ -738,7 +738,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
         byte[]? embedded = BgfxEmbeddedDebugDrawShaders.TryGet(shaderName, profile);
         if (embedded is not null)
         {
-            return PatchEmbeddedBrowserSpriteShader(shaderName, profile, embedded);
+            return embedded;
         }
 
         throw new InvalidOperationException(
@@ -987,75 +987,5 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
         return System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Create("BROWSER")) ||
                System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Create("browser"));
 #endif
-    }
-
-    private static byte[] PatchEmbeddedBrowserSpriteShader(string shaderName, string profile, byte[] shader)
-    {
-        if (shaderName != "fs_debugdraw_fill_texture" || !IsBrowserRuntime())
-        {
-            return shader;
-        }
-
-        byte[] patched = shader.ToArray();
-        if (profile == "essl")
-        {
-            ReplaceShaderText(
-                patched,
-                "tmpvar_1 = texture2D (s_texColor, v_texcoord0);\n  gl_FragColor = (tmpvar_1 * v_color0);",
-                "tmpvar_1 = v_color0;\n  gl_FragColor = tmpvar_1;"
-            );
-        }
-        else if (profile == "wgsl")
-        {
-            ReplaceShaderText(
-                patched,
-                "bgfx_FragData0 = (textureSample(s_texColorTexture, s_texColorSampler, v_texcoord0) * v_color0);",
-                "bgfx_FragData0 = v_color0;"
-            );
-        }
-
-        return patched;
-    }
-
-    private static void ReplaceShaderText(byte[] bytes, string oldText, string newText)
-    {
-        byte[] oldBytes = System.Text.Encoding.UTF8.GetBytes(oldText);
-        byte[] newBytes = System.Text.Encoding.UTF8.GetBytes(newText);
-        if (newBytes.Length > oldBytes.Length)
-        {
-            throw new InvalidOperationException("Replacement shader text must not grow.");
-        }
-
-        int offset = IndexOf(bytes, oldBytes);
-        if (offset < 0)
-        {
-            throw new InvalidOperationException("Could not find embedded sprite shader text to patch.");
-        }
-
-        Array.Copy(newBytes, 0, bytes, offset, newBytes.Length);
-        Array.Fill<byte>(bytes, 0x20, offset + newBytes.Length, oldBytes.Length - newBytes.Length);
-    }
-
-    private static int IndexOf(byte[] bytes, byte[] pattern)
-    {
-        for (int i = 0; i <= bytes.Length - pattern.Length; i++)
-        {
-            bool found = true;
-            for (int j = 0; j < pattern.Length; j++)
-            {
-                if (bytes[i + j] != pattern[j])
-                {
-                    found = false;
-                    break;
-                }
-            }
-
-            if (found)
-            {
-                return i;
-            }
-        }
-
-        return -1;
     }
 }
