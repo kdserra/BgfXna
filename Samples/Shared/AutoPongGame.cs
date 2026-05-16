@@ -280,18 +280,7 @@ public class AutoPongGame : Game
 
     private void DrawRectangle(SpriteBatch sb, Rectangle Rec, Color color)
     {
-        Vector2 pos = new Vector2(Rec.X, Rec.Y);
-        sb.Draw(
-            Texture,
-            pos,
-            Rec,
-            color * 1.0f,
-            0,
-            Vector2.Zero,
-            1.0f,
-            SpriteEffects.None,
-            0.00001f
-        );
+        sb.Draw(Texture, Rec, color * 1.0f);
     }
 
     private void LimitPaddle(ref Rectangle Paddle)
