@@ -193,18 +193,18 @@ namespace bgfx { namespace gl
 		if (m_current != _swapChain)
 		{
 			m_current = _swapChain;
+		}
 
-			if (NULL == _swapChain)
+		if (NULL == _swapChain)
+		{
+			if (NULL != m_primary)
 			{
-				if (NULL != m_primary)
-				{
-					m_primary->makeCurrent();
-				}
+				m_primary->makeCurrent();
 			}
-			else
-			{
-				_swapChain->makeCurrent();
-			}
+		}
+		else
+		{
+			_swapChain->makeCurrent();
 		}
 	}
 

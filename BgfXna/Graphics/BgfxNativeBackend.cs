@@ -979,10 +979,10 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
     private static bool IsBrowserRuntime()
     {
-#if NET5_0_OR_GREATER
-        return OperatingSystem.IsBrowser();
-#elif BROWSER
+#if BROWSER
         return true;
+#elif NET5_0_OR_GREATER
+        return OperatingSystem.IsBrowser();
 #else
         return System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Create("BROWSER")) ||
                System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Create("browser"));

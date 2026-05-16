@@ -18,7 +18,7 @@ function chooseBackend() {
     return requested;
   }
 
-  return 'webgl';
+  return globalThis.navigator?.gpu ? 'webgpu' : 'webgl';
 }
 
 function describeError(error) {
