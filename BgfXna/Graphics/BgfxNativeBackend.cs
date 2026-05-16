@@ -79,7 +79,10 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
     public void Initialize(GraphicsDeviceOptions options)
     {
 #if !NETSTANDARD
-        RegisterDllImportResolver();
+        if (!IsBrowserRuntime())
+        {
+            RegisterDllImportResolver();
+        }
 #endif
         if (options.NativeWindowHandle == IntPtr.Zero && !IsBrowserRuntime() && options.Backend != GraphicsBackend.Noop)
         {
@@ -883,7 +886,10 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
     private static GraphicsBackend NormalizeBackend(GraphicsBackend backend)
     {
-#if IOS
+#if NET5_0_OR_GREATER
+        if (OperatingSystem.IsIOS()) return backend == GraphicsBackend.Auto ? GraphicsBackend.Metal : backend;
+        return backend;
+#elif IOS
         return backend == GraphicsBackend.Auto ? GraphicsBackend.Metal : backend;
 #else
         return backend;
@@ -892,7 +898,9 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
     private static bool RequiresSingleThreadedRenderer()
     {
-#if IOS
+#if NET5_0_OR_GREATER
+        return OperatingSystem.IsIOS();
+#elif IOS
         return true;
 #else
         return false;
@@ -964,10 +972,13 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
     private static bool IsBrowserRuntime()
     {
-#if BROWSER
+#if NET5_0_OR_GREATER
+        return OperatingSystem.IsBrowser();
+#elif BROWSER
         return true;
 #else
-        return false;
+        return System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Create("BROWSER")) ||
+               System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Create("browser"));
 #endif
     }
 }
