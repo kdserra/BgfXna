@@ -10,6 +10,7 @@ public sealed class PresentationParameters
     public DepthFormat DepthStencilFormat { get; set; } = DepthFormat.Depth24Stencil8;
     public IntPtr DeviceDisplayHandle { get; set; }
     public IntPtr DeviceWindowHandle { get; set; }
+    public NativeWindowHandleKind DeviceWindowHandleKind { get; set; } = NativeWindowHandleKind.Default;
     public bool IsFullScreen { get; set; }
     public int MultiSampleCount { get; set; }
     public PresentInterval PresentationInterval { get; set; } = PresentInterval.One;

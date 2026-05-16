@@ -56,6 +56,11 @@ public class AutoPongGame : Game
         _graphics.NativeDisplayHandle = displayHandle;
     }
 
+    public void SetNativeWindowHandleType(NativeWindowHandleKind kind)
+    {
+        _graphics.NativeWindowHandleKind = kind;
+    }
+
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);

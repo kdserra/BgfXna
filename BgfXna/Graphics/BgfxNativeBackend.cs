@@ -112,7 +112,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             if (options.NativeWindowHandle != IntPtr.Zero)
             {
                 init.platformData.nwh = options.NativeWindowHandle.ToPointer();
-                init.platformData.type = bgfx.NativeWindowHandleType.Default;
+                init.platformData.type = ToBgfxNativeWindowHandleType(options.NativeWindowHandleKind);
             }
             else if (IsBrowserRuntime())
             {
@@ -921,6 +921,13 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             GraphicsBackend.WebGPU => bgfx.RendererType.WebGPU,
             GraphicsBackend.Noop => bgfx.RendererType.Noop,
             _ => bgfx.RendererType.Count,
+        };
+
+    private static bgfx.NativeWindowHandleType ToBgfxNativeWindowHandleType(NativeWindowHandleKind kind) =>
+        kind switch
+        {
+            NativeWindowHandleKind.Wayland => bgfx.NativeWindowHandleType.Wayland,
+            _ => bgfx.NativeWindowHandleType.Default,
         };
 
     private static GraphicsBackend FromBgfxRenderer(bgfx.RendererType renderer) =>

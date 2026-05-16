@@ -25,6 +25,7 @@ public sealed class GraphicsDeviceManager : IDisposable, IGraphicsDeviceManager,
     public GraphicsBackend PreferredBackend { get; set; } = GraphicsBackend.Auto;
     public IntPtr NativeDisplayHandle { get; set; }
     public IntPtr NativeWindowHandle { get; set; }
+    public NativeWindowHandleKind NativeWindowHandleKind { get; set; } = NativeWindowHandleKind.Default;
     public GraphicsDevice GraphicsDevice
     {
         get
@@ -88,6 +89,7 @@ public sealed class GraphicsDeviceManager : IDisposable, IGraphicsDeviceManager,
                 IsFullScreen = IsFullScreen,
                 DeviceDisplayHandle = NativeDisplayHandle,
                 DeviceWindowHandle = NativeWindowHandle,
+                DeviceWindowHandleKind = NativeWindowHandleKind,
                 PresentationInterval = SynchronizeWithVerticalRetrace ? PresentInterval.One : PresentInterval.Immediate,
                 MultiSampleCount = PreferMultiSampling ? 4 : 0
             }
@@ -104,6 +106,7 @@ public sealed class GraphicsDeviceManager : IDisposable, IGraphicsDeviceManager,
             DepthStencilFormat = presentation.DepthStencilFormat,
             NativeDisplayHandle = presentation.DeviceDisplayHandle,
             NativeWindowHandle = presentation.DeviceWindowHandle,
+            NativeWindowHandleKind = presentation.DeviceWindowHandleKind,
             VSync = presentation.PresentationInterval != PresentInterval.Immediate
         });
     }

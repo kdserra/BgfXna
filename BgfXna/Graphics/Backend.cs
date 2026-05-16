@@ -14,12 +14,19 @@ public sealed class GraphicsDeviceOptions
     public GraphicsBackend Backend { get; init; } = GraphicsBackend.Auto;
     public IntPtr NativeDisplayHandle { get; init; }
     public IntPtr NativeWindowHandle { get; init; }
+    public NativeWindowHandleKind NativeWindowHandleKind { get; init; } = NativeWindowHandleKind.Default;
     public int BackBufferWidth { get; init; } = 1280;
     public int BackBufferHeight { get; init; } = 720;
     public SurfaceFormat BackBufferFormat { get; init; } = SurfaceFormat.Color;
     public DepthFormat DepthStencilFormat { get; init; } = DepthFormat.Depth24Stencil8;
     public bool Debug { get; init; }
     public bool VSync { get; init; } = true;
+}
+
+public enum NativeWindowHandleKind
+{
+    Default,
+    Wayland
 }
 
 public readonly record struct BgfxCapabilities(
