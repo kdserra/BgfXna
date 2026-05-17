@@ -517,32 +517,10 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             return;
         }
 
-        int vertexStride = VertexPositionColorTexture.Declaration.VertexStride;
-        byte[] vertexBytes = new byte[vertices.Length * vertexStride];
-        float invWidth = 1f / _backBufferWidth;
-        float invHeight = 1f / _backBufferHeight;
-        for (int i = 0; i < vertices.Length; i++)
-        {
-            VertexPositionColorTexture v = vertices[i];
-            float clipX = v.Position.X * invWidth * 2f - 1f;
-            float clipY = 1f - v.Position.Y * invHeight * 2f;
-            float clipZ = v.Position.Z;
-            int offset = i * vertexStride;
-            byte[] posBytes = BitConverter.GetBytes(clipX);
-            Buffer.BlockCopy(posBytes, 0, vertexBytes, offset, 4);
-            posBytes = BitConverter.GetBytes(clipY);
-            Buffer.BlockCopy(posBytes, 0, vertexBytes, offset + 4, 4);
-            posBytes = BitConverter.GetBytes(clipZ);
-            Buffer.BlockCopy(posBytes, 0, vertexBytes, offset + 8, 4);
-            vertexBytes[offset + 12] = v.Color.R;
-            vertexBytes[offset + 13] = v.Color.G;
-            vertexBytes[offset + 14] = v.Color.B;
-            vertexBytes[offset + 15] = v.Color.A;
-            byte[] uvBytes = BitConverter.GetBytes(v.TextureCoordinate.X);
-            Buffer.BlockCopy(uvBytes, 0, vertexBytes, offset + 16, 4);
-            uvBytes = BitConverter.GetBytes(v.TextureCoordinate.Y);
-            Buffer.BlockCopy(uvBytes, 0, vertexBytes, offset + 20, 4);
-        }
+        byte[] vertexBytes = ConvertVertexDataToClipSpace(
+            MemoryMarshal.AsBytes(vertices),
+            VertexPositionColorTexture.Declaration
+        );
         fixed (byte* vertexPointer = vertexBytes)
         fixed (ushort* indexPointer = indices)
         {
@@ -657,19 +635,20 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
         int stride = declaration.VertexStride;
         int offset = positionElement.Value.Offset;
-        float invWidth = 1f / _backBufferWidth;
-        float invHeight = 1f / _backBufferHeight;
         for (int i = 0; i + stride <= converted.Length; i += stride)
         {
-            int vertexOffset = i + offset;
-            float x = BitConverter.ToSingle(converted, vertexOffset);
-            float y = BitConverter.ToSingle(converted, vertexOffset + 4);
-            float clipX = x * invWidth * 2f - 1f;
-            float clipY = 1f - y * invHeight * 2f;
-            byte[] xBytes = BitConverter.GetBytes(clipX);
-            byte[] yBytes = BitConverter.GetBytes(clipY);
-            Buffer.BlockCopy(xBytes, 0, converted, vertexOffset, 4);
-            Buffer.BlockCopy(yBytes, 0, converted, vertexOffset + 4, 4);
+            Span<byte> vertex = converted.AsSpan(i + offset);
+            float x = MemoryMarshal.Read<float>(vertex);
+            float y = MemoryMarshal.Read<float>(vertex[4..]);
+            float clipX = x / _backBufferWidth * 2f - 1f;
+            float clipY = 1f - y / _backBufferHeight * 2f;
+#if NETSTANDARD2_1
+            MemoryMarshal.Write(vertex, ref clipX);
+            MemoryMarshal.Write(vertex[4..], ref clipY);
+#else
+            MemoryMarshal.Write(vertex, in clipX);
+            MemoryMarshal.Write(vertex[4..], in clipY);
+#endif
         }
 
         return converted;
