@@ -1063,42 +1063,47 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
     private static byte[] SerializeVertices(ReadOnlySpan<VertexPositionColorTexture> vertices)
     {
         byte[] result = new byte[vertices.Length * 24];
-        for (int i = 0; i < vertices.Length; i++)
+        unsafe
         {
-            int offset = i * 24;
-            // Write Position (x, y, z floats) - 12 bytes
-            float posX = vertices[i].Position.X;
-            float posY = vertices[i].Position.Y;
-            float posZ = vertices[i].Position.Z;
+            fixed (VertexPositionColorTexture* startPtr = vertices)
+            {
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    int offset = i * 24;
+                    // Write Position (x, y, z floats) - 12 bytes
+                    float posX = startPtr[i].Position.X;
+                    float posY = startPtr[i].Position.Y;
+                    float posZ = startPtr[i].Position.Z;
 
 #if NET5_0_OR_GREATER
-            MemoryMarshal.Write(result.AsSpan(offset), in posX);
-            MemoryMarshal.Write(result.AsSpan(offset + 4), in posY);
-            MemoryMarshal.Write(result.AsSpan(offset + 8), in posZ);
+                    MemoryMarshal.Write(result.AsSpan(offset), in posX);
+                    MemoryMarshal.Write(result.AsSpan(offset + 4), in posY);
+                    MemoryMarshal.Write(result.AsSpan(offset + 8), in posZ);
 #else
-            MemoryMarshal.Write(result.AsSpan(offset), ref posX);
-            MemoryMarshal.Write(result.AsSpan(offset + 4), ref posY);
-            MemoryMarshal.Write(result.AsSpan(offset + 8), ref posZ);
+                    MemoryMarshal.Write(result.AsSpan(offset), ref posX);
+                    MemoryMarshal.Write(result.AsSpan(offset + 4), ref posY);
+                    MemoryMarshal.Write(result.AsSpan(offset + 8), ref posZ);
 #endif
 
-            // Write Color (4 bytes) - copy directly from the struct's memory at offset 12 to bypass trimmed PackedValue
-            ref readonly VertexPositionColorTexture vertexRef = ref vertices[i];
-            ref byte vertexByteRef = ref System.Runtime.CompilerServices.Unsafe.As<VertexPositionColorTexture, byte>(ref System.Runtime.CompilerServices.Unsafe.AsRef(in vertexRef));
-            result[offset + 12] = System.Runtime.CompilerServices.Unsafe.Add(ref vertexByteRef, 12);
-            result[offset + 13] = System.Runtime.CompilerServices.Unsafe.Add(ref vertexByteRef, 13);
-            result[offset + 14] = System.Runtime.CompilerServices.Unsafe.Add(ref vertexByteRef, 14);
-            result[offset + 15] = System.Runtime.CompilerServices.Unsafe.Add(ref vertexByteRef, 15);
+                    // Write Color (4 bytes) - copy directly from the struct's memory at offset 12 to bypass trimmed PackedValue
+                    byte* vertexBytePtr = (byte*)&startPtr[i];
+                    result[offset + 12] = vertexBytePtr[12];
+                    result[offset + 13] = vertexBytePtr[13];
+                    result[offset + 14] = vertexBytePtr[14];
+                    result[offset + 15] = vertexBytePtr[15];
 
-            // Write TextureCoordinate (u, v floats) - 8 bytes
-            float texU = vertices[i].TextureCoordinate.X;
-            float texV = vertices[i].TextureCoordinate.Y;
+                    // Write TextureCoordinate (u, v floats) - 8 bytes
+                    float texU = startPtr[i].TextureCoordinate.X;
+                    float texV = startPtr[i].TextureCoordinate.Y;
 #if NET5_0_OR_GREATER
-            MemoryMarshal.Write(result.AsSpan(offset + 16), in texU);
-            MemoryMarshal.Write(result.AsSpan(offset + 20), in texV);
+                    MemoryMarshal.Write(result.AsSpan(offset + 16), in texU);
+                    MemoryMarshal.Write(result.AsSpan(offset + 20), in texV);
 #else
-            MemoryMarshal.Write(result.AsSpan(offset + 16), ref texU);
-            MemoryMarshal.Write(result.AsSpan(offset + 20), ref texV);
+                    MemoryMarshal.Write(result.AsSpan(offset + 16), ref texU);
+                    MemoryMarshal.Write(result.AsSpan(offset + 20), ref texV);
 #endif
+                }
+            }
         }
         return result;
     }
