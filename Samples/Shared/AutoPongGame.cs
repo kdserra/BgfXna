@@ -278,20 +278,9 @@ public class AutoPongGame : Game
         base.Draw(gameTime);
     }
 
-    private void DrawRectangle(SpriteBatch sb, Rectangle Rec, Color color)
+    private void DrawRectangle(SpriteBatch sb, Rectangle rec, Color color)
     {
-        Vector2 pos = new Vector2(Rec.X, Rec.Y);
-        sb.Draw(
-            Texture,
-            pos,
-            Rec,
-            color * 1.0f,
-            0,
-            Vector2.Zero,
-            1.0f,
-            SpriteEffects.None,
-            0.00001f
-        );
+        sb.Draw(Texture, rec, color);
     }
 
     private void LimitPaddle(ref Rectangle Paddle)
@@ -312,7 +301,7 @@ public class AutoPongGame : Game
         if (Texture == null)
         { //create texture to draw with if it does not exist
             Texture = new Texture2D(_graphics.GraphicsDevice, 1, 1);
-            Texture.SetData<Color>(new Color[] { Color.White });
+            Texture.SetData<byte>(new byte[] { 255, 255, 255, 255 });
         }
 
         int PaddleHeight = 100;

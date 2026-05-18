@@ -20,8 +20,8 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
     private readonly Dictionary<ushort, bgfx.ProgramHandle> _programs = new();
     private readonly Dictionary<ushort, bgfx.VertexLayoutHandle> _vertexLayouts = new();
     private ushort _nextHandle = 1;
-    private bgfx.UniformHandle _spriteSampler;
-    private bgfx.ProgramHandle _spriteProgram;
+    private bgfx.UniformHandle _spriteSampler = InvalidUniformHandle();
+    private bgfx.ProgramHandle _spriteProgram = InvalidProgramHandle();
     private bgfx.VertexBufferHandle _currentVertexBuffer;
     private bgfx.IndexBufferHandle _currentIndexBuffer;
     private bgfx.TextureHandle _currentTexture;
@@ -278,6 +278,40 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
         return handle;
     }
 
+    public void UpdateTexture2D(
+        BgfxHandle handle,
+        int level,
+        Rectangle bounds,
+        ReadOnlySpan<byte> data
+    )
+    {
+        EnsureInitialized();
+        if (
+            !handle.IsValid
+            || data.IsEmpty
+            || !_textures.TryGetValue(handle.Id, out bgfx.TextureHandle texture)
+        )
+        {
+            return;
+        }
+
+        fixed (byte* dataPointer = data)
+        {
+            bgfx.Memory* memory = bgfx.copy(dataPointer, (uint)data.Length);
+            bgfx.update_texture_2d(
+                texture,
+                0,
+                checked((byte)level),
+                checked((ushort)bounds.X),
+                checked((ushort)bounds.Y),
+                checked((ushort)bounds.Width),
+                checked((ushort)bounds.Height),
+                memory,
+                ushort.MaxValue
+            );
+        }
+    }
+
     public BgfxHandle CreateRenderTarget(
         int width,
         int height,
@@ -487,7 +521,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
     internal void DrawSpriteBatch(
         ushort viewId,
-        ReadOnlySpan<VertexPositionColorTexture> vertices,
+        ReadOnlySpan<SpriteBatchVertex> vertices,
         ReadOnlySpan<ushort> indices,
         BgfxHandle texture,
         SamplerState samplerState,
@@ -502,7 +536,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
         bgfx.TransientVertexBuffer tvb;
         bgfx.TransientIndexBuffer tib;
-        bgfx.VertexLayout layout = CreateVertexLayout(VertexPositionColorTexture.Declaration);
+        bgfx.VertexLayout layout = CreateVertexLayout(SpriteBatchVertex.Declaration);
         if (
             !bgfx.alloc_transient_buffers(
                 &tvb,
@@ -519,7 +553,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
         byte[] vertexBytes = ConvertVertexDataToClipSpace(
             MemoryMarshal.AsBytes(vertices),
-            VertexPositionColorTexture.Declaration
+            SpriteBatchVertex.Declaration
         );
         fixed (byte* vertexPointer = vertexBytes)
         fixed (ushort* indexPointer = indices)
@@ -557,13 +591,13 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             if (_spriteProgram.Valid)
             {
                 bgfx.destroy_program(_spriteProgram);
-                _spriteProgram = default;
+                _spriteProgram = InvalidProgramHandle();
             }
 
             if (_spriteSampler.Valid)
             {
                 bgfx.destroy_uniform(_spriteSampler);
-                _spriteSampler = default;
+                _spriteSampler = InvalidUniformHandle();
             }
 
             bgfx.shutdown();
@@ -592,6 +626,12 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
     }
 
     private BgfxHandle AllocateHandle() => new(_nextHandle++);
+
+    private static bgfx.ProgramHandle InvalidProgramHandle() =>
+        new() { idx = ushort.MaxValue };
+
+    private static bgfx.UniformHandle InvalidUniformHandle() =>
+        new() { idx = ushort.MaxValue };
 
     private static void SetIdentityTransform()
     {
@@ -683,6 +723,21 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
         byte[] vertexShader = LoadEmbeddedDebugDrawShader("vs_debugdraw_fill_texture");
         byte[] fragmentShader = LoadEmbeddedDebugDrawShader("fs_debugdraw_fill_texture");
+        if (_rendererType == bgfx.RendererType.OpenGLES)
+        {
+            fragmentShader = ReplaceEsslShaderSource(
+                fragmentShader,
+                35,
+                39,
+                "varying highp vec4 v_color0;\n"
+                    + "varying highp vec2 v_texcoord0;\n"
+                    + "uniform sampler2D s_texColor;\n"
+                    + "void main ()\n"
+                    + "{\n"
+                    + "  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
+                    + "}\n\n"
+            );
+        }
         fixed (byte* vertexPointer = vertexShader)
         fixed (byte* fragmentPointer = fragmentShader)
         {
@@ -695,6 +750,24 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             _spriteProgram = bgfx.create_program(vs, fs, true);
             return _spriteProgram;
         }
+    }
+
+    private static byte[] ReplaceEsslShaderSource(
+        byte[] shader,
+        int sourceLengthOffset,
+        int sourceOffset,
+        string source
+    )
+    {
+        byte[] sourceBytes = System.Text.Encoding.ASCII.GetBytes(source);
+        byte[] result = new byte[sourceOffset + sourceBytes.Length + 1];
+        Array.Copy(shader, result, sourceOffset);
+        sourceBytes.CopyTo(result, sourceOffset);
+        result[sourceLengthOffset] = (byte)sourceBytes.Length;
+        result[sourceLengthOffset + 1] = (byte)(sourceBytes.Length >> 8);
+        result[sourceLengthOffset + 2] = (byte)(sourceBytes.Length >> 16);
+        result[sourceLengthOffset + 3] = (byte)(sourceBytes.Length >> 24);
+        return result;
     }
 
     private byte[] LoadEmbeddedDebugDrawShader(string shaderName)
