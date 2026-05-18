@@ -6,7 +6,6 @@
     <Project Path="Samples/AndroidVulkan/AndroidVulkan.csproj">
       <Deploy />
     </Project>
-    <Project Path="Samples/BrowserWebApp/BrowserWebApp.csproj" />
     <Project Path="Samples/DesktopOpenGL/DesktopOpenGL.csproj" />
     <Project Path="Samples/DesktopVulkan/DesktopVulkan.csproj" />
     <Project Path="Samples/DesktopHeadless/DesktopHeadless.csproj" />
