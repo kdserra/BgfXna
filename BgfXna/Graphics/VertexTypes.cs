@@ -30,26 +30,6 @@ public struct VertexPositionColorTexture : IVertexType
 }
 
 [StructLayout(LayoutKind.Sequential)]
-internal struct SpriteBatchVertex
-{
-    public static readonly VertexDeclaration Declaration = new(
-        new VertexElement(0, VertexElementFormat.Vector3, VertexElementUsage.Position, 0),
-        new VertexElement(12, VertexElementFormat.Vector4, VertexElementUsage.Color, 0),
-        new VertexElement(28, VertexElementFormat.Vector2, VertexElementUsage.TextureCoordinate, 0));
-
-    public SpriteBatchVertex(Vector3 position, Vector4 color, Vector2 textureCoordinate)
-    {
-        Position = position;
-        Color = color;
-        TextureCoordinate = textureCoordinate;
-    }
-
-    public Vector3 Position;
-    public Vector4 Color;
-    public Vector2 TextureCoordinate;
-}
-
-[StructLayout(LayoutKind.Sequential)]
 public struct VertexPositionColor : IVertexType
 {
     public static readonly VertexDeclaration Declaration = new(

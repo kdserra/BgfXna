@@ -301,7 +301,7 @@ public class AutoPongGame : Game
         if (Texture == null)
         { //create texture to draw with if it does not exist
             Texture = new Texture2D(_graphics.GraphicsDevice, 1, 1);
-            Texture.SetData<byte>(new byte[] { 255, 255, 255, 255 });
+            Texture.SetData<Color>(new Color[] { Color.White });
         }
 
         int PaddleHeight = 100;

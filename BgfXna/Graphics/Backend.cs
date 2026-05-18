@@ -45,7 +45,6 @@ public interface IBgfxBackend : IDisposable
     BgfxHandle CreateVertexBuffer(ReadOnlySpan<byte> data, VertexDeclaration declaration, BufferUsage usage);
     BgfxHandle CreateIndexBuffer(ReadOnlySpan<byte> data, IndexElementSize elementSize, BufferUsage usage);
     BgfxHandle CreateTexture2D(int width, int height, bool mipMap, SurfaceFormat format, ReadOnlySpan<byte> data);
-    void UpdateTexture2D(BgfxHandle handle, int level, Rectangle bounds, ReadOnlySpan<byte> data);
     BgfxHandle CreateRenderTarget(int width, int height, SurfaceFormat format, DepthFormat depthFormat);
     BgfxHandle CreateShader(ReadOnlySpan<byte> shaderBytes, string? name);
     BgfxHandle CreateProgram(BgfxHandle vertexShader, BgfxHandle fragmentShader, bool destroyShaders);
@@ -77,7 +76,6 @@ public sealed class NullBgfxBackend : IBgfxBackend
     public BgfxHandle CreateVertexBuffer(ReadOnlySpan<byte> data, VertexDeclaration declaration, BufferUsage usage) => Allocate();
     public BgfxHandle CreateIndexBuffer(ReadOnlySpan<byte> data, IndexElementSize elementSize, BufferUsage usage) => Allocate();
     public BgfxHandle CreateTexture2D(int width, int height, bool mipMap, SurfaceFormat format, ReadOnlySpan<byte> data) => Allocate();
-    public void UpdateTexture2D(BgfxHandle handle, int level, Rectangle bounds, ReadOnlySpan<byte> data) { }
     public BgfxHandle CreateRenderTarget(int width, int height, SurfaceFormat format, DepthFormat depthFormat) => Allocate();
     public BgfxHandle CreateShader(ReadOnlySpan<byte> shaderBytes, string? name) => Allocate();
     public BgfxHandle CreateProgram(BgfxHandle vertexShader, BgfxHandle fragmentShader, bool destroyShaders) => Allocate();

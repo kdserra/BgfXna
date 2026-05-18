@@ -278,40 +278,6 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
         return handle;
     }
 
-    public void UpdateTexture2D(
-        BgfxHandle handle,
-        int level,
-        Rectangle bounds,
-        ReadOnlySpan<byte> data
-    )
-    {
-        EnsureInitialized();
-        if (
-            !handle.IsValid
-            || data.IsEmpty
-            || !_textures.TryGetValue(handle.Id, out bgfx.TextureHandle texture)
-        )
-        {
-            return;
-        }
-
-        fixed (byte* dataPointer = data)
-        {
-            bgfx.Memory* memory = bgfx.copy(dataPointer, (uint)data.Length);
-            bgfx.update_texture_2d(
-                texture,
-                0,
-                checked((byte)level),
-                checked((ushort)bounds.X),
-                checked((ushort)bounds.Y),
-                checked((ushort)bounds.Width),
-                checked((ushort)bounds.Height),
-                memory,
-                ushort.MaxValue
-            );
-        }
-    }
-
     public BgfxHandle CreateRenderTarget(
         int width,
         int height,
@@ -521,7 +487,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
     internal void DrawSpriteBatch(
         ushort viewId,
-        ReadOnlySpan<SpriteBatchVertex> vertices,
+        ReadOnlySpan<VertexPositionColorTexture> vertices,
         ReadOnlySpan<ushort> indices,
         BgfxHandle texture,
         SamplerState samplerState,
@@ -536,7 +502,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
         bgfx.TransientVertexBuffer tvb;
         bgfx.TransientIndexBuffer tib;
-        bgfx.VertexLayout layout = CreateVertexLayout(SpriteBatchVertex.Declaration);
+        bgfx.VertexLayout layout = CreateVertexLayout(VertexPositionColorTexture.Declaration);
         if (
             !bgfx.alloc_transient_buffers(
                 &tvb,
@@ -553,7 +519,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
         byte[] vertexBytes = ConvertVertexDataToClipSpace(
             MemoryMarshal.AsBytes(vertices),
-            SpriteBatchVertex.Declaration
+            VertexPositionColorTexture.Declaration
         );
         fixed (byte* vertexPointer = vertexBytes)
         fixed (ushort* indexPointer = indices)
@@ -723,7 +689,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
         byte[] vertexShader = LoadEmbeddedDebugDrawShader("vs_debugdraw_fill_texture");
         byte[] fragmentShader = LoadEmbeddedDebugDrawShader("fs_debugdraw_fill_texture");
-        if (_rendererType == bgfx.RendererType.OpenGLES)
+        if (_requestedBackend == GraphicsBackend.WebGL)
         {
             fragmentShader = ReplaceEsslShaderSource(
                 fragmentShader,

@@ -157,7 +157,7 @@ public sealed class SpriteBatch : IDisposable
 
         const int verticesPerSprite = 4;
         const int indicesPerSprite = 6;
-        SpriteBatchVertex[] vertices = new SpriteBatchVertex[_items.Count * verticesPerSprite];
+        VertexPositionColorTexture[] vertices = new VertexPositionColorTexture[_items.Count * verticesPerSprite];
         ushort[] indices = new ushort[_items.Count * indicesPerSprite];
         Texture2D? texture = null;
 
@@ -165,7 +165,7 @@ public sealed class SpriteBatch : IDisposable
         {
             SpriteBatchItem item = _items[i];
             texture ??= item.Texture;
-            CreateNativeQuad(item).CopyTo(vertices, i * verticesPerSprite);
+            CreateQuad(item).CopyTo(vertices, i * verticesPerSprite);
 
             ushort vertexStart = (ushort)(i * verticesPerSprite);
             int indexStart = i * indicesPerSprite;
@@ -228,39 +228,6 @@ public sealed class SpriteBatch : IDisposable
             new VertexPositionColorTexture(new Vector3(right, top, item.LayerDepth), item.Color, new Vector2(u1, v0)),
             new VertexPositionColorTexture(new Vector3(left, bottom, item.LayerDepth), item.Color, new Vector2(u0, v1)),
             new VertexPositionColorTexture(new Vector3(right, bottom, item.LayerDepth), item.Color, new Vector2(u1, v1))
-        };
-    }
-
-    private static SpriteBatchVertex[] CreateNativeQuad(SpriteBatchItem item)
-    {
-        Rectangle d = item.Destination;
-        Rectangle s = item.Source;
-        float left = d.X;
-        float top = d.Y;
-        float right = d.X + d.Width;
-        float bottom = d.Y + d.Height;
-        float u0 = (float)s.X / item.Texture.Width;
-        float v0 = (float)s.Y / item.Texture.Height;
-        float u1 = (float)(s.X + s.Width) / item.Texture.Width;
-        float v1 = (float)(s.Y + s.Height) / item.Texture.Height;
-
-        if ((item.Effects & SpriteEffects.FlipHorizontally) != 0)
-        {
-            (u0, u1) = (u1, u0);
-        }
-
-        if ((item.Effects & SpriteEffects.FlipVertically) != 0)
-        {
-            (v0, v1) = (v1, v0);
-        }
-
-        Vector4 color = item.Color.ToVector4();
-        return new[]
-        {
-            new SpriteBatchVertex(new Vector3(left, top, item.LayerDepth), color, new Vector2(u0, v0)),
-            new SpriteBatchVertex(new Vector3(right, top, item.LayerDepth), color, new Vector2(u1, v0)),
-            new SpriteBatchVertex(new Vector3(left, bottom, item.LayerDepth), color, new Vector2(u0, v1)),
-            new SpriteBatchVertex(new Vector3(right, bottom, item.LayerDepth), color, new Vector2(u1, v1))
         };
     }
 
