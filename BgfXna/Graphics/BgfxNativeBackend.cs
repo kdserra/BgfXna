@@ -517,8 +517,19 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             return;
         }
 
+        ReadOnlySpan<byte> serialized;
+        byte[]? serializedArray = null;
+        if (IsBrowserRuntime())
+        {
+            serializedArray = SerializeVertices(vertices);
+            serialized = serializedArray;
+        }
+        else
+        {
+            serialized = MemoryMarshal.AsBytes(vertices);
+        }
         byte[] vertexBytes = ConvertVertexDataToClipSpace(
-            MemoryMarshal.AsBytes(vertices),
+            serialized,
             VertexPositionColorTexture.Declaration
         );
         fixed (byte* vertexPointer = vertexBytes)
@@ -689,7 +700,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
 
         byte[] vertexShader = LoadEmbeddedDebugDrawShader("vs_debugdraw_fill_texture");
         byte[] fragmentShader = LoadEmbeddedDebugDrawShader("fs_debugdraw_fill_texture");
-        if (_requestedBackend == GraphicsBackend.WebGL)
+        if (_rendererType == bgfx.RendererType.OpenGLES)
         {
             fragmentShader = ReplaceEsslShaderSource(
                 fragmentShader,
@@ -702,6 +713,27 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
                     + "{\n"
                     + "  gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
                     + "}\n\n"
+            );
+        }
+        else if (_rendererType == bgfx.RendererType.WebGPU)
+        {
+            fragmentShader = ReplaceEsslShaderSource(
+                fragmentShader,
+                35,
+                39,
+                "diagnostic(off, derivative_uniformity);\n"
+                    + "diagnostic(off, subgroup_uniformity);\n\n"
+                    + "@group(0) @binding(18u) var s_texColorSampler : sampler;\n"
+                    + "@group(0) @binding(2u) var s_texColorTexture : texture_2d<f32>;\n\n"
+                    + "var<private> bgfx_FragData0 : vec4<f32>;\n\n"
+                    + "fn main_inner(v_color0 : vec4<f32>, v_texcoord0 : vec2<f32>) {\n"
+                    + "  bgfx_FragData0 = vec4<f32>(1.0, 1.0, 1.0, 1.0);\n"
+                    + "}\n\n"
+                    + "@fragment\n"
+                    + "fn main(@location(0) v_color0 : vec4<f32>, @location(1) v_texcoord0 : vec2<f32>) -> @location(0) vec4<f32> {\n"
+                    + "  main_inner(v_color0, v_texcoord0);\n"
+                    + "  return bgfx_FragData0;\n"
+                    + "}\n"
             );
         }
         fixed (byte* vertexPointer = vertexShader)
@@ -1016,7 +1048,7 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
             : Marshal.PtrToStringAnsi(pointer) ?? rendererType.ToString();
     }
 
-    private static bool IsBrowserRuntime()
+    internal static bool IsBrowserRuntime()
     {
 #if BROWSER
         return true;
@@ -1026,5 +1058,48 @@ public sealed unsafe class BgfxNativeBackend : IBgfxBackend
         return System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Create("BROWSER")) ||
                System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Create("browser"));
 #endif
+    }
+
+    private static byte[] SerializeVertices(ReadOnlySpan<VertexPositionColorTexture> vertices)
+    {
+        byte[] result = new byte[vertices.Length * 24];
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            int offset = i * 24;
+            // Write Position (x, y, z floats) - 12 bytes
+            float posX = vertices[i].Position.X;
+            float posY = vertices[i].Position.Y;
+            float posZ = vertices[i].Position.Z;
+
+#if NET5_0_OR_GREATER
+            MemoryMarshal.Write(result.AsSpan(offset), in posX);
+            MemoryMarshal.Write(result.AsSpan(offset + 4), in posY);
+            MemoryMarshal.Write(result.AsSpan(offset + 8), in posZ);
+#else
+            MemoryMarshal.Write(result.AsSpan(offset), ref posX);
+            MemoryMarshal.Write(result.AsSpan(offset + 4), ref posY);
+            MemoryMarshal.Write(result.AsSpan(offset + 8), ref posZ);
+#endif
+
+            // Write Color (4 bytes) - copy directly from the struct's memory at offset 12 to bypass trimmed PackedValue
+            ref readonly VertexPositionColorTexture vertexRef = ref vertices[i];
+            ref byte vertexByteRef = ref System.Runtime.CompilerServices.Unsafe.As<VertexPositionColorTexture, byte>(ref System.Runtime.CompilerServices.Unsafe.AsRef(in vertexRef));
+            result[offset + 12] = System.Runtime.CompilerServices.Unsafe.Add(ref vertexByteRef, 12);
+            result[offset + 13] = System.Runtime.CompilerServices.Unsafe.Add(ref vertexByteRef, 13);
+            result[offset + 14] = System.Runtime.CompilerServices.Unsafe.Add(ref vertexByteRef, 14);
+            result[offset + 15] = System.Runtime.CompilerServices.Unsafe.Add(ref vertexByteRef, 15);
+
+            // Write TextureCoordinate (u, v floats) - 8 bytes
+            float texU = vertices[i].TextureCoordinate.X;
+            float texV = vertices[i].TextureCoordinate.Y;
+#if NET5_0_OR_GREATER
+            MemoryMarshal.Write(result.AsSpan(offset + 16), in texU);
+            MemoryMarshal.Write(result.AsSpan(offset + 20), in texV);
+#else
+            MemoryMarshal.Write(result.AsSpan(offset + 16), ref texU);
+            MemoryMarshal.Write(result.AsSpan(offset + 20), ref texV);
+#endif
+        }
+        return result;
     }
 }

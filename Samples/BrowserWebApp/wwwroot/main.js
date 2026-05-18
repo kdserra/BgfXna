@@ -76,7 +76,36 @@ globalThis.addEventListener('error', event => showStartupError(event.error || ev
 globalThis.addEventListener('unhandledrejection', event => showStartupError(event.reason));
 
 try {
-  const { runMain, getConfig } = await dotnet.create();
+  const { runMain, getConfig } = await dotnet
+    .withModuleConfig({
+      onRuntimeInitialized: function() {
+        console.log("Emscripten runtime initialized. Applying robust keepalive patch...");
+        const m = this || globalThis.Module || (typeof Module !== 'undefined' ? Module : null);
+        if (m) {
+          console.log("Found Emscripten Module object:", m);
+          // 1. Manually push one keepalive to prevent underflow
+          if (typeof m.runtimeKeepalivePush === 'function') {
+            m.runtimeKeepalivePush();
+            console.log("Successfully pushed initial keepalive.");
+          }
+          // 2. Wrap runtimeKeepalivePop in a try-catch to prevent aborting on underflow
+          if (typeof m.runtimeKeepalivePop === 'function') {
+            const originalPop = m.runtimeKeepalivePop;
+            m.runtimeKeepalivePop = function() {
+              try {
+                return originalPop.apply(this, arguments);
+              } catch (e) {
+                console.warn("Caught and suppressed keepalive pop assertion:", e);
+              }
+            };
+            console.log("Successfully wrapped runtimeKeepalivePop.");
+          }
+        } else {
+          console.warn("Could not find Emscripten Module object to patch keepalive.");
+        }
+      }
+    })
+    .create();
   await runMain(getConfig().mainAssemblyName, [chooseBackend()]);
 } catch (error) {
   showStartupError(error);

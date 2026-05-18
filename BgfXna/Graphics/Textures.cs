@@ -53,7 +53,27 @@ public class Texture2D : Texture
     public void SetData<T>(ReadOnlySpan<T> data) where T : unmanaged
     {
         ThrowIfDisposed();
-        ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(data);
+        ReadOnlySpan<byte> bytes;
+        byte[]? serializedColor = null;
+        if (typeof(T) == typeof(Color) && BgfxNativeBackend.IsBrowserRuntime())
+        {
+            serializedColor = new byte[data.Length * 4];
+            ref T startRef = ref MemoryMarshal.GetReference(data);
+            for (int i = 0; i < data.Length; i++)
+            {
+                ref T elemRef = ref System.Runtime.CompilerServices.Unsafe.Add(ref startRef, i);
+                ref byte byteRef = ref System.Runtime.CompilerServices.Unsafe.As<T, byte>(ref elemRef);
+                serializedColor[i * 4] = byteRef;
+                serializedColor[i * 4 + 1] = System.Runtime.CompilerServices.Unsafe.Add(ref byteRef, 1);
+                serializedColor[i * 4 + 2] = System.Runtime.CompilerServices.Unsafe.Add(ref byteRef, 2);
+                serializedColor[i * 4 + 3] = System.Runtime.CompilerServices.Unsafe.Add(ref byteRef, 3);
+            }
+            bytes = serializedColor;
+        }
+        else
+        {
+            bytes = MemoryMarshal.AsBytes(data);
+        }
         GraphicsDevice.Backend.Destroy(Handle);
         Handle = GraphicsDevice.Backend.CreateTexture2D(Width, Height, LevelCount > 1, Format, bytes);
     }

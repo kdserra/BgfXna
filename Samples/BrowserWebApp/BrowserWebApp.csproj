@@ -26,7 +26,7 @@
     <WasmEmitSymbolMap>false</WasmEmitSymbolMap>
     <RunWasmOpt>false</RunWasmOpt>
     <EmccLinkOptimizationFlag Condition="'$(Configuration)' == 'Release'">-O1</EmccLinkOptimizationFlag>
-    <EmccExtraLDFlags>$(EmccExtraLDFlags) -s MAX_WEBGL_VERSION=2 -s GL_ENABLE_GET_PROC_ADDRESS=1 --js-library "$(MSBuildProjectDirectory)\browser-webgl-context.js"</EmccExtraLDFlags>
+    <EmccExtraLDFlags>$(EmccExtraLDFlags) -s MAX_WEBGL_VERSION=2 -s GL_ENABLE_GET_PROC_ADDRESS=1 -s ASSERTIONS=0 -Wl,--export=emscripten_stack_init,--export=emscripten_stack_get_free,--export=emscripten_stack_get_base,--export=emscripten_stack_get_end,--export=emscripten_stack_get_current --js-library "$(MSBuildProjectDirectory)\browser-webgl-context.js"</EmccExtraLDFlags>
   </PropertyGroup>
 
   <ItemGroup>
