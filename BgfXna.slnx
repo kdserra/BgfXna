@@ -13,6 +13,7 @@
     <Project Path="Samples/MacMetal/MacMetal.csproj" />
     <Project Path="Samples/WindowsDX11/WindowsDX11.csproj" />
     <Project Path="Samples/WindowsDX12/WindowsDX12.csproj" />
+    <Project Path="Samples/BrowserWebApp/BrowserWebApp.csproj" />
   </Folder>
   <Project Path="BgfXna/BgfXna.csproj" />
 </Solution>
