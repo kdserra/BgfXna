@@ -131,11 +131,16 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           XCODE_PATH=$(find /Applications -maxdepth 1 -name "Xcode_*.app" | sort -V | tail -n 1)
-          if [ -n "$XCODE_PATH" ] && [ -d "$XCODE_PATH" ]; then
-            echo "Selecting Xcode at $XCODE_PATH"
-            sudo xcode-select -s "$XCODE_PATH"
+          if [ -z "$XCODE_PATH" ] || [ ! -d "$XCODE_PATH" ]; then
+            XCODE_PATH="/Applications/Xcode.app"
+          fi
+          
+          DEVELOPER_DIR="$XCODE_PATH/Contents/Developer"
+          if [ -d "$DEVELOPER_DIR" ]; then
+            echo "Selecting Xcode Developer Directory: $DEVELOPER_DIR"
+            sudo xcode-select -s "$DEVELOPER_DIR"
           else
-            echo "Defaulting to xcode-select --reset"
+            echo "Xcode Developer Directory not found at $DEVELOPER_DIR, resetting to default"
             sudo xcode-select --reset
           fi
 
