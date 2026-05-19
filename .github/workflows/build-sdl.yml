@@ -14,11 +14,16 @@ on:
 
 jobs:
   setup:
+    # Note: ubuntu-latest currently maps to ubuntu-24.04
     runs-on: ubuntu-latest
     outputs:
       matrix_include: ${{ steps.parse.outputs.matrix_include }}
     steps:
       - id: parse
+        # NOTE on Runner 'latest' mappings at time of setup:
+        # - ubuntu-latest currently maps to ubuntu-24.04
+        # - windows-latest currently maps to windows-2025
+        # - macos-latest currently maps to macos-14
         run: |
           full_mapping='{
             "win-x64": {"runner": "windows-latest"},
@@ -153,6 +158,7 @@ jobs:
   release:
     name: Create Release
     needs: build
+    # Note: ubuntu-latest currently maps to ubuntu-24.04
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -14,11 +14,17 @@ on:
 
 jobs:
   setup:
+    # Note: ubuntu-latest currently maps to ubuntu-24.04
     runs-on: ubuntu-latest
     outputs:
       matrix_include: ${{ steps.parse.outputs.matrix_include }}
     steps:
       - id: parse
+        # NOTE on Runner 'latest' mappings at time of setup:
+        # - ubuntu-latest currently maps to ubuntu-24.04
+        # - windows-latest currently maps to windows-2025
+        # - macos-latest currently maps to macos-14
+        # - We explicitly use macos-15 for Apple targets to ensure Xcode 16.4/16.5 is preinstalled.
         run: |
           full_mapping='{
             "win-x64": {
@@ -37,13 +43,13 @@ jobs:
               "rids": ["linux-arm64"]
             },
             "osx-x64": {
-              "runner": "macos-latest",
+              "runner": "macos-15",
               "workload": "macos",
               "projects": ["Samples/MacMetal/MacMetal.csproj", "Samples/DesktopOpenGL/DesktopOpenGL.csproj", "Samples/DesktopVulkan/DesktopVulkan.csproj", "Samples/DesktopHeadless/DesktopHeadless.csproj"],
               "rids": ["osx-x64"]
             },
             "osx-arm64": {
-              "runner": "macos-latest",
+              "runner": "macos-15",
               "workload": "macos",
               "projects": ["Samples/MacMetal/MacMetal.csproj", "Samples/DesktopOpenGL/DesktopOpenGL.csproj", "Samples/DesktopVulkan/DesktopVulkan.csproj", "Samples/DesktopHeadless/DesktopHeadless.csproj"],
               "rids": ["osx-arm64"]
@@ -61,7 +67,7 @@ jobs:
               "rids": ["android-x64"]
             },
             "ios-arm64": {
-              "runner": "macos-latest",
+              "runner": "macos-15",
               "workload": "ios",
               "projects": ["Samples/iOSMetal/iOSMetal.csproj"],
               "rids": ["ios-arm64"]
@@ -343,6 +349,7 @@ jobs:
   release:
     name: Create Release
     needs: build
+    # Note: ubuntu-latest currently maps to ubuntu-24.04
     runs-on: ubuntu-latest
     permissions:
       contents: write
