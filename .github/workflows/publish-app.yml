@@ -139,6 +139,17 @@ jobs:
           if [ -d "$DEVELOPER_DIR" ]; then
             echo "Selecting Xcode Developer Directory: $DEVELOPER_DIR"
             sudo xcode-select -s "$DEVELOPER_DIR"
+            echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
+            
+            # Create a compatibility symlink if the build tools try to lookup Xcode_<version>.0.app
+            VERSION_NAME=$(basename "$XCODE_PATH" .app)
+            if [[ "$VERSION_NAME" =~ Xcode_([0-9]+\.[0-9]+)$ ]]; then
+              BUGGY_NAME="/Applications/Xcode_${BASH_REMATCH[1]}.0.app"
+              if [ ! -d "$BUGGY_NAME" ]; then
+                echo "Creating compatibility symlink from $XCODE_PATH to $BUGGY_NAME"
+                sudo ln -s "$XCODE_PATH" "$BUGGY_NAME"
+              fi
+            fi
           else
             echo "Xcode Developer Directory not found at $DEVELOPER_DIR, resetting to default"
             sudo xcode-select --reset
