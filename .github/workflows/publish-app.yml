@@ -136,8 +136,13 @@ jobs:
             XCODE_PATH="/Applications/Xcode.app"
           fi
           
+          # Resolve symlinks to get the real physical path of Xcode (so xcode-select -s works)
+          REAL_XCODE_PATH=$(readlink -f "$XCODE_PATH")
+          echo "Selected Xcode Path: $XCODE_PATH"
+          echo "Resolved Physical Xcode Path: $REAL_XCODE_PATH"
+          
           # 2. Select it
-          DEVELOPER_DIR="$XCODE_PATH/Contents/Developer"
+          DEVELOPER_DIR="$REAL_XCODE_PATH/Contents/Developer"
           if [ -d "$DEVELOPER_DIR" ]; then
             echo "Selecting Xcode Developer Directory: $DEVELOPER_DIR"
             sudo xcode-select -s "$DEVELOPER_DIR"
@@ -145,20 +150,20 @@ jobs:
           else
             echo "Xcode Developer Directory not found at $DEVELOPER_DIR, resetting to default"
             sudo xcode-select --reset
-            XCODE_PATH="/Applications/Xcode.app"
-            DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+            REAL_XCODE_PATH=$(readlink -f "/Applications/Xcode.app")
+            DEVELOPER_DIR="$REAL_XCODE_PATH/Contents/Developer"
             echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
           fi
           
           # 3. Create compatibility symlinks for the selected Xcode version (e.g. Xcode_26.3.0.app)
           if [ -d "$DEVELOPER_DIR" ]; then
             # Extract Xcode version from Info.plist or version.plist using defaults read
-            XCODE_VER=$(defaults read "$XCODE_PATH/Contents/Info" CFShortVersionString 2>/dev/null)
+            XCODE_VER=$(defaults read "$REAL_XCODE_PATH/Contents/Info" CFShortVersionString 2>/dev/null)
             if [ -z "$XCODE_VER" ]; then
-              XCODE_VER=$(defaults read "$XCODE_PATH/Contents/Info" CFBundleShortVersionString 2>/dev/null)
+              XCODE_VER=$(defaults read "$REAL_XCODE_PATH/Contents/Info" CFBundleShortVersionString 2>/dev/null)
             fi
             if [ -z "$XCODE_VER" ]; then
-              XCODE_VER=$(defaults read "$XCODE_PATH/Contents/version" CFBundleShortVersionString 2>/dev/null)
+              XCODE_VER=$(defaults read "$REAL_XCODE_PATH/Contents/version" CFBundleShortVersionString 2>/dev/null)
             fi
             # If all plist options fail, try calling xcodebuild as a fallback
             if [ -z "$XCODE_VER" ]; then
@@ -174,16 +179,16 @@ jobs:
                 
                 # Check /Applications/Xcode_MAJOR.MINOR.app
                 LINK1="/Applications/Xcode_${MAJOR}.${MINOR}.app"
-                if [ ! -e "$LINK1" ] && [ "$XCODE_PATH" != "$LINK1" ]; then
-                  echo "Creating symlink from $XCODE_PATH to $LINK1"
-                  sudo ln -s "$XCODE_PATH" "$LINK1"
+                if [ ! -e "$LINK1" ] && [ "$REAL_XCODE_PATH" != "$LINK1" ]; then
+                  echo "Creating symlink from $REAL_XCODE_PATH to $LINK1"
+                  sudo ln -s "$REAL_XCODE_PATH" "$LINK1"
                 fi
                 
                 # Check /Applications/Xcode_MAJOR.MINOR.0.app
                 LINK2="/Applications/Xcode_${MAJOR}.${MINOR}.0.app"
-                if [ ! -e "$LINK2" ] && [ "$XCODE_PATH" != "$LINK2" ]; then
-                  echo "Creating symlink from $XCODE_PATH to $LINK2"
-                  sudo ln -s "$XCODE_PATH" "$LINK2"
+                if [ ! -e "$LINK2" ] && [ "$REAL_XCODE_PATH" != "$LINK2" ]; then
+                  echo "Creating symlink from $REAL_XCODE_PATH to $LINK2"
+                  sudo ln -s "$REAL_XCODE_PATH" "$LINK2"
                 fi
               fi
             fi
@@ -191,12 +196,12 @@ jobs:
           
           # 4. Also create compatibility links from any other versioned Xcode filenames found in /Applications
           for app in /Applications/Xcode_*.app; do
-            if [ -d "$app" ]; then
+            if [ -d "$app" ] && [ ! -L "$app" ]; then
               filename=$(basename "$app" .app)
               if [[ "$filename" =~ Xcode_([0-9]+\.[0-9]+)$ ]]; then
                 ver="${BASH_REMATCH[1]}"
                 compat="/Applications/Xcode_${ver}.0.app"
-                if [ ! -e "$compat" ] && [ "$app" != "$compat" ]; then
+                if [ ! -e "$compat" ]; then
                   echo "Creating compatibility link from $app to $compat"
                   sudo ln -s "$app" "$compat"
                 fi
