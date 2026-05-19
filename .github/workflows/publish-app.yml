@@ -130,29 +130,51 @@ jobs:
       - name: Select Xcode
         if: runner.os == 'macOS'
         run: |
+          # 1. Determine active/latest Xcode path
           XCODE_PATH=$(find /Applications -maxdepth 1 -name "Xcode_*.app" | sort -V | tail -n 1)
           if [ -z "$XCODE_PATH" ] || [ ! -d "$XCODE_PATH" ]; then
             XCODE_PATH="/Applications/Xcode.app"
           fi
           
+          # 2. Select it
           DEVELOPER_DIR="$XCODE_PATH/Contents/Developer"
           if [ -d "$DEVELOPER_DIR" ]; then
             echo "Selecting Xcode Developer Directory: $DEVELOPER_DIR"
             sudo xcode-select -s "$DEVELOPER_DIR"
             echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
-            
-            # Create a compatibility symlink if the build tools try to lookup Xcode_<version>.0.app
-            VERSION_NAME=$(basename "$XCODE_PATH" .app)
-            if [[ "$VERSION_NAME" =~ Xcode_([0-9]+\.[0-9]+)$ ]]; then
-              BUGGY_NAME="/Applications/Xcode_${BASH_REMATCH[1]}.0.app"
-              if [ ! -d "$BUGGY_NAME" ]; then
-                echo "Creating compatibility symlink from $XCODE_PATH to $BUGGY_NAME"
-                sudo ln -s "$XCODE_PATH" "$BUGGY_NAME"
-              fi
-            fi
           else
             echo "Xcode Developer Directory not found at $DEVELOPER_DIR, resetting to default"
             sudo xcode-select --reset
+            XCODE_PATH="/Applications/Xcode.app"
+            DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+            echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
+          fi
+          
+          # 3. Create compatibility symlinks for the selected Xcode version (e.g. Xcode_26.3.0.app)
+          if [ -d "$DEVELOPER_DIR" ]; then
+            XCODE_VER=$("$DEVELOPER_DIR/usr/bin/xcodebuild" -version 2>/dev/null | head -n 1 | awk '{print $2}')
+            echo "Active Xcode Version is $XCODE_VER"
+            if [ ! -z "$XCODE_VER" ]; then
+              # If version starts with MAJOR.MINOR, create major.minor.app and major.minor.0.app symlinks
+              if [[ "$XCODE_VER" =~ ^([0-9]+)\.([0-9]+) ]]; then
+                MAJOR="${BASH_REMATCH[1]}"
+                MINOR="${BASH_REMATCH[2]}"
+                
+                # Check /Applications/Xcode_MAJOR.MINOR.app
+                LINK1="/Applications/Xcode_${MAJOR}.${MINOR}.app"
+                if [ ! -e "$LINK1" ] && [ "$XCODE_PATH" != "$LINK1" ]; then
+                  echo "Creating symlink from $XCODE_PATH to $LINK1"
+                  sudo ln -s "$XCODE_PATH" "$LINK1"
+                fi
+                
+                # Check /Applications/Xcode_MAJOR.MINOR.0.app
+                LINK2="/Applications/Xcode_${MAJOR}.${MINOR}.0.app"
+                if [ ! -e "$LINK2" ] && [ "$XCODE_PATH" != "$LINK2" ]; then
+                  echo "Creating symlink from $XCODE_PATH to $LINK2"
+                  sudo ln -s "$XCODE_PATH" "$LINK2"
+                fi
+              fi
+            fi
           fi
 
       - name: Pre-create Xcode Settings Plist
