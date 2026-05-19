@@ -130,9 +130,15 @@ jobs:
       - name: Select Xcode
         if: runner.os == 'macOS'
         run: |
-          # 1. Determine active/latest Xcode path
-          XCODE_PATH=$(find /Applications -maxdepth 1 -name "Xcode_*.app" | sort -V | tail -n 1)
-          if [ -z "$XCODE_PATH" ] || [ ! -d "$XCODE_PATH" ]; then
+          # 1. Determine active/latest Xcode path (must be a real directory, not a symlink)
+          XCODE_PATH=""
+          for app in $(find /Applications -maxdepth 1 -name "Xcode_*.app" -type d | sort -V); do
+            if [ -d "$app" ] && [ ! -L "$app" ]; then
+              XCODE_PATH="$app"
+            fi
+          done
+          
+          if [ -z "$XCODE_PATH" ] || [ ! -d "$XCODE_PATH" ] || [ -L "$XCODE_PATH" ]; then
             XCODE_PATH="/Applications/Xcode.app"
           fi
           
@@ -145,11 +151,11 @@ jobs:
           DEVELOPER_DIR="$REAL_XCODE_PATH/Contents/Developer"
           if [ -d "$DEVELOPER_DIR" ]; then
             echo "Selecting Xcode Developer Directory: $DEVELOPER_DIR"
-            sudo xcode-select -s "$DEVELOPER_DIR"
+            sudo xcode-select -s "$DEVELOPER_DIR" || true
             echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
           else
             echo "Xcode Developer Directory not found at $DEVELOPER_DIR, resetting to default"
-            sudo xcode-select --reset
+            sudo xcode-select --reset || true
             REAL_XCODE_PATH=$(readlink -f "/Applications/Xcode.app")
             DEVELOPER_DIR="$REAL_XCODE_PATH/Contents/Developer"
             echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> $GITHUB_ENV
