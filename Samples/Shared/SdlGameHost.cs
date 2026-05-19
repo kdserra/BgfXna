@@ -27,6 +27,80 @@ internal sealed class SdlAutoPongWindow : IDisposable
     private TimeSpan _lastFrame;
     private bool _running;
 
+    static SdlAutoPongWindow()
+    {
+#if !NETSTANDARD
+        System.Runtime.InteropServices.NativeLibrary.SetDllImportResolver(
+            typeof(SdlAutoPongWindow).Assembly,
+            (libraryName, assembly, searchPath) =>
+            {
+                if (libraryName == "SDL3")
+                {
+                    if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
+                    {
+                        // 1. Try loading from the local application directory first to ensure bundled/local libraries are prioritized
+                        string localPath0 = System.IO.Path.Combine(System.AppContext.BaseDirectory, "libSDL3.so.0");
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad(localPath0, assembly, searchPath, out IntPtr handle))
+                        {
+                            return handle;
+                        }
+                        
+                        string localPath = System.IO.Path.Combine(System.AppContext.BaseDirectory, "libSDL3.so");
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad(localPath, assembly, searchPath, out handle))
+                        {
+                            return handle;
+                        }
+
+                        // 2. Fall back to standard search paths (system-wide and LD_LIBRARY_PATH)
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad("libSDL3.so.0", assembly, searchPath, out handle))
+                        {
+                            return handle;
+                        }
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad("libSDL3.so", assembly, searchPath, out handle))
+                        {
+                            return handle;
+                        }
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad("SDL3.so", assembly, searchPath, out handle))
+                        {
+                            return handle;
+                        }
+                    }
+                    else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
+                    {
+                        // 1. Try loading from the local application directory first to ensure bundled/local libraries are prioritized
+                        string localPath0 = System.IO.Path.Combine(System.AppContext.BaseDirectory, "libSDL3.0.dylib");
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad(localPath0, assembly, searchPath, out IntPtr handle))
+                        {
+                            return handle;
+                        }
+                        
+                        string localPath = System.IO.Path.Combine(System.AppContext.BaseDirectory, "libSDL3.dylib");
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad(localPath, assembly, searchPath, out handle))
+                        {
+                            return handle;
+                        }
+
+                        // 2. Fall back to standard search paths
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad("libSDL3.0.dylib", assembly, searchPath, out handle))
+                        {
+                            return handle;
+                        }
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad("libSDL3.dylib", assembly, searchPath, out handle))
+                        {
+                            return handle;
+                        }
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad("SDL3.dylib", assembly, searchPath, out handle))
+                        {
+                            return handle;
+                        }
+                    }
+                }
+                return IntPtr.Zero;
+            }
+        );
+#endif
+    }
+
     public SdlAutoPongWindow()
     {
         if (!SDL_Init(0x00000020)) // SDL_INIT_VIDEO
