@@ -144,6 +144,14 @@ jobs:
             sudo xcode-select --reset
           fi
 
+      - name: Pre-create Xcode Settings Plist
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p ~/Library/Preferences/maui
+          mkdir -p ~/Library/Preferences/Xamarin
+          echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict></dict></plist>' > ~/Library/Preferences/maui/Settings.plist
+          echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict></dict></plist>' > ~/Library/Preferences/Xamarin/Settings.plist
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
