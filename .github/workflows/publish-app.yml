@@ -129,7 +129,15 @@ jobs:
 
       - name: Select Xcode
         if: runner.os == 'macOS'
-        run: sudo xcode-select -s /Applications/Xcode.app
+        run: |
+          XCODE_PATH=$(find /Applications -maxdepth 1 -name "Xcode_*.app" | sort -V | tail -n 1)
+          if [ -n "$XCODE_PATH" ] && [ -d "$XCODE_PATH" ]; then
+            echo "Selecting Xcode at $XCODE_PATH"
+            sudo xcode-select -s "$XCODE_PATH"
+          else
+            echo "Defaulting to xcode-select --reset"
+            sudo xcode-select --reset
+          fi
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -157,18 +165,18 @@ jobs:
           $target = '${{ matrix.target }}'
           $config = '${{ matrix.configuration }}'
           if ($target -eq "browser-wasm") {
-              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0-browser -p:IncludeMobileTargets=true
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0-browser -p:IncludeMobileTargets=true
           } elseif ($target -eq "ios-arm64") {
-              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0-ios -p:IncludeMobileTargets=true
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0-ios -p:IncludeMobileTargets=true
           } elseif ($target.StartsWith("android-")) {
-              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0-android -p:IncludeMobileTargets=true
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0-android -p:IncludeMobileTargets=true
           } elseif ($target.StartsWith("osx-")) {
-              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0
-              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0-macos -p:IncludeMobileTargets=true
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0-macos -p:IncludeMobileTargets=true
           } elseif ($target -eq "win-x64") {
-              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0
           } else {
-              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0
           }
 
       - name: Copy Base BgfXna Library
@@ -208,7 +216,7 @@ jobs:
               
               # 1. Build project in current configuration (automatic targeted restore)
               Write-Host "Building project for target framework $tf..."
-              dotnet build $proj -c $config -p:TargetFrameworks=$tf -p:IncludeMobileTargets=true
+              dotnet build $proj -c $config -f $tf -p:BuildTargetFrameworks=$tf -p:IncludeMobileTargets=true
               
               # Copy build output
               $binFolder = "dist/samples/$projName/$config"
@@ -228,7 +236,7 @@ jobs:
                       $publishFolder = "dist/publish/$rid/$projName"
                       New-Item -ItemType Directory -Path $publishFolder -Force
                       
-                      dotnet publish $proj -r $rid -c Release -p:TargetFrameworks=$tf -p:IncludeMobileTargets=true -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false
+                      dotnet publish $proj -r $rid -c Release -f $tf -p:BuildTargetFrameworks=$tf -p:IncludeMobileTargets=true -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false
                   }
               }
           }
