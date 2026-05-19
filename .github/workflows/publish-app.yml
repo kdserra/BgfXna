@@ -180,7 +180,7 @@ jobs:
           if ($target -eq "browser-wasm") {
               dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0-browser -p:IncludeMobileTargets=true
           } elseif ($target -eq "ios-arm64") {
-              dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0-ios -p:IncludeMobileTargets=true
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0-ios -p:IncludeMobileTargets=true -p:ValidateXcodeVersion=false
           } elseif ($target.StartsWith("android-")) {
               dotnet build BgfXna/BgfXna.csproj -c $config -p:BuildTargetFrameworks=net10.0-android -p:IncludeMobileTargets=true
           } elseif ($target.StartsWith("osx-")) {
@@ -229,7 +229,7 @@ jobs:
               
               # 1. Build project in current configuration (automatic targeted restore)
               Write-Host "Building project for target framework $tf..."
-              dotnet build $proj -c $config -f $tf -p:BuildTargetFrameworks=$tf -p:IncludeMobileTargets=true
+              dotnet build $proj -c $config -f $tf -p:BuildTargetFrameworks=$tf -p:IncludeMobileTargets=true -p:ValidateXcodeVersion=false
               
               # Copy build output
               $binFolder = "dist/samples/$projName/$config"
@@ -249,7 +249,7 @@ jobs:
                       $publishFolder = "dist/publish/$rid/$projName"
                       New-Item -ItemType Directory -Path $publishFolder -Force
                       
-                      dotnet publish $proj -r $rid -c Release -f $tf -p:BuildTargetFrameworks=$tf -p:IncludeMobileTargets=true -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false
+                      dotnet publish $proj -r $rid -c Release -f $tf -p:BuildTargetFrameworks=$tf -p:IncludeMobileTargets=true -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false -p:ValidateXcodeVersion=false
                   }
               }
           }
