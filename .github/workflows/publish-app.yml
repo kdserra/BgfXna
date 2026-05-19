@@ -127,6 +127,10 @@ jobs:
           unzip -o native.zip
           rm native.zip
 
+      - name: Select Xcode
+        if: runner.os == 'macOS'
+        run: sudo xcode-select -s /Applications/Xcode.app
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
@@ -148,7 +152,25 @@ jobs:
         run: dotnet workload install ${{ matrix.workload }} --no-cache
 
       - name: Build Base BgfXna Project
-        run: dotnet build BgfXna/BgfXna.csproj -c ${{ matrix.configuration }}
+        shell: pwsh
+        run: |
+          $target = '${{ matrix.target }}'
+          $config = '${{ matrix.configuration }}'
+          if ($target -eq "browser-wasm") {
+              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0-browser
+          } elseif ($target -eq "ios-arm64") {
+              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0-ios
+          } elseif ($target.StartsWith("android-")) {
+              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0-android
+          } elseif ($target.StartsWith("osx-")) {
+              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0
+              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0-macos
+          } elseif ($target -eq "win-x64") {
+              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0
+              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0-windows
+          } else {
+              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0
+          }
 
       - name: Copy Base BgfXna Library
         shell: pwsh
@@ -171,9 +193,23 @@ jobs:
               $projName = [System.IO.Path]::GetFileNameWithoutExtension($proj)
               Write-Host "Processing Project: $projName ($proj)"
               
+              # Determine the target framework for the project
+              $tf = "net10.0"
+              if ($proj.Contains("BrowserWebApp")) {
+                  $tf = "net10.0-browser"
+              } elseif ($proj.Contains("Android")) {
+                  $tf = "net10.0-android"
+              } elseif ($proj.Contains("iOSMetal")) {
+                  $tf = "net10.0-ios"
+              } elseif ($proj.Contains("MacMetal")) {
+                  $tf = "net10.0-macos"
+              } elseif ($proj.Contains("WindowsDX")) {
+                  $tf = "net10.0-windows"
+              }
+              
               # 1. Build project in current configuration (automatic targeted restore)
-              Write-Host "Building project..."
-              dotnet build $proj -c $config
+              Write-Host "Building project for target framework $tf..."
+              dotnet build $proj -c $config -f $tf
               
               # Copy build output
               $binFolder = "dist/samples/$projName/$config"
@@ -189,11 +225,11 @@ jobs:
               if ($config -eq "Release") {
                   foreach ($rid in $rids) {
                       if ([string]::IsNullOrEmpty($rid)) { continue }
-                      Write-Host "Publishing project for RID $rid..."
+                      Write-Host "Publishing project for RID $rid and target framework $tf..."
                       $publishFolder = "dist/publish/$rid/$projName"
                       New-Item -ItemType Directory -Path $publishFolder -Force
                       
-                      dotnet publish $proj -r $rid -c Release -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false
+                      dotnet publish $proj -r $rid -c Release -f $tf -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false
                   }
               }
           }
@@ -201,7 +237,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: publish-${{ matrix.target }}-${{ matrix.configuration }}
+          name: publish-${{ matrix.target }}--${{ matrix.configuration }}
           path: dist/
 
   release:
