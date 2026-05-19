@@ -38,11 +38,13 @@ jobs:
             },
             "osx-x64": {
               "runner": "macos-latest",
+              "workload": "macos",
               "projects": ["Samples/MacMetal/MacMetal.csproj", "Samples/DesktopOpenGL/DesktopOpenGL.csproj", "Samples/DesktopVulkan/DesktopVulkan.csproj", "Samples/DesktopHeadless/DesktopHeadless.csproj"],
               "rids": ["osx-x64"]
             },
             "osx-arm64": {
               "runner": "macos-latest",
+              "workload": "macos",
               "projects": ["Samples/MacMetal/MacMetal.csproj", "Samples/DesktopOpenGL/DesktopOpenGL.csproj", "Samples/DesktopVulkan/DesktopVulkan.csproj", "Samples/DesktopHeadless/DesktopHeadless.csproj"],
               "rids": ["osx-arm64"]
             },
@@ -136,9 +138,6 @@ jobs:
         if: matrix.workload != null && matrix.workload != ''
         run: dotnet workload install ${{ matrix.workload }} --no-cache
 
-      - name: Restore Dependencies
-        run: dotnet restore
-
       - name: Build Base BgfXna Project
         run: dotnet build BgfXna/BgfXna.csproj -c ${{ matrix.configuration }}
 
@@ -163,7 +162,7 @@ jobs:
               $projName = [System.IO.Path]::GetFileNameWithoutExtension($proj)
               Write-Host "Processing Project: $projName ($proj)"
               
-              # 1. Build project in current configuration
+              # 1. Build project in current configuration (automatic targeted restore)
               Write-Host "Building project..."
               dotnet build $proj -c $config
               
