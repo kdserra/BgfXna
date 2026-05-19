@@ -301,9 +301,15 @@ jobs:
                   $tf = "net10.0-windows"
               }
               
+              # Define any framework-specific extra build arguments (e.g. bypass code signing for iOS device builds on CI)
+              $extraArgs = @()
+              if ($tf -eq "net10.0-ios") {
+                  $extraArgs += "-p:EnableCodeSigning=false"
+              }
+              
               # 1. Build project in current configuration (automatic targeted restore)
               Write-Host "Building project for target framework $tf..."
-              dotnet build $proj -c $config -f $tf -p:BuildTargetFrameworks=$tf -p:IncludeMobileTargets=true -p:ValidateXcodeVersion=false
+              dotnet build $proj -c $config -f $tf -p:BuildTargetFrameworks=$tf -p:IncludeMobileTargets=true -p:ValidateXcodeVersion=false $extraArgs
               
               # Copy build output
               $binFolder = "dist/samples/$projName/$config"
@@ -323,7 +329,7 @@ jobs:
                       $publishFolder = "dist/publish/$rid/$projName"
                       New-Item -ItemType Directory -Path $publishFolder -Force
                       
-                      dotnet publish $proj -r $rid -c Release -f $tf -p:BuildTargetFrameworks=$tf -p:IncludeMobileTargets=true -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false -p:ValidateXcodeVersion=false
+                      dotnet publish $proj -r $rid -c Release -f $tf -p:BuildTargetFrameworks=$tf -p:IncludeMobileTargets=true -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false -p:ValidateXcodeVersion=false $extraArgs
                   }
               }
           }
