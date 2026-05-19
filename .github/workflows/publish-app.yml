@@ -1,0 +1,249 @@
+name: Publish BgfXna Applications
+
+on:
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: 'Comma-separated list of platforms to build or "all". Supported: win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64, android-arm64, android-x64, ios-arm64, browser-wasm'
+        default: 'all'
+        required: false
+      configurations:
+        description: 'Comma-separated list of configurations to build (Debug,Release) or "all"'
+        default: 'all'
+        required: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix_include: ${{ steps.parse.outputs.matrix_include }}
+    steps:
+      - id: parse
+        run: |
+          full_mapping='{
+            "win-x64": {
+              "runner": "windows-latest",
+              "projects": ["Samples/WindowsDX11/WindowsDX11.csproj", "Samples/WindowsDX12/WindowsDX12.csproj", "Samples/DesktopOpenGL/DesktopOpenGL.csproj", "Samples/DesktopVulkan/DesktopVulkan.csproj", "Samples/DesktopHeadless/DesktopHeadless.csproj"],
+              "rids": ["win-x64"]
+            },
+            "linux-x64": {
+              "runner": "ubuntu-latest",
+              "projects": ["Samples/DesktopOpenGL/DesktopOpenGL.csproj", "Samples/DesktopVulkan/DesktopVulkan.csproj", "Samples/DesktopHeadless/DesktopHeadless.csproj"],
+              "rids": ["linux-x64"]
+            },
+            "linux-arm64": {
+              "runner": "ubuntu-24.04-arm",
+              "projects": ["Samples/DesktopOpenGL/DesktopOpenGL.csproj", "Samples/DesktopVulkan/DesktopVulkan.csproj", "Samples/DesktopHeadless/DesktopHeadless.csproj"],
+              "rids": ["linux-arm64"]
+            },
+            "osx-x64": {
+              "runner": "macos-latest",
+              "projects": ["Samples/MacMetal/MacMetal.csproj", "Samples/DesktopOpenGL/DesktopOpenGL.csproj", "Samples/DesktopVulkan/DesktopVulkan.csproj", "Samples/DesktopHeadless/DesktopHeadless.csproj"],
+              "rids": ["osx-x64"]
+            },
+            "osx-arm64": {
+              "runner": "macos-latest",
+              "projects": ["Samples/MacMetal/MacMetal.csproj", "Samples/DesktopOpenGL/DesktopOpenGL.csproj", "Samples/DesktopVulkan/DesktopVulkan.csproj", "Samples/DesktopHeadless/DesktopHeadless.csproj"],
+              "rids": ["osx-arm64"]
+            },
+            "android-arm64": {
+              "runner": "ubuntu-latest",
+              "workload": "android",
+              "projects": ["Samples/AndroidOpenGLES/AndroidOpenGLES.csproj", "Samples/AndroidVulkan/AndroidVulkan.csproj"],
+              "rids": ["android-arm64"]
+            },
+            "android-x64": {
+              "runner": "ubuntu-latest",
+              "workload": "android",
+              "projects": ["Samples/AndroidOpenGLES/AndroidOpenGLES.csproj", "Samples/AndroidVulkan/AndroidVulkan.csproj"],
+              "rids": ["android-x64"]
+            },
+            "ios-arm64": {
+              "runner": "macos-latest",
+              "workload": "ios",
+              "projects": ["Samples/iOSMetal/iOSMetal.csproj"],
+              "rids": ["ios-arm64"]
+            },
+            "browser-wasm": {
+              "runner": "ubuntu-latest",
+              "workload": "wasm-tools",
+              "projects": ["Samples/BrowserWebApp/BrowserWebApp.csproj"],
+              "rids": ["browser-wasm"]
+            }
+          }'
+          
+          targets_input="${{ inputs.targets }}"
+          if [ "$targets_input" = "all" ] || [ -z "$targets_input" ]; then
+            selected_targets=$(echo "$full_mapping" | jq -c 'keys')
+          else
+            selected_targets=$(echo "$targets_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
+          fi
+          
+          configs_input="${{ inputs.configurations }}"
+          if [ "$configs_input" = "all" ] || [ -z "$configs_input" ]; then
+            configs='["Debug", "Release"]'
+          else
+            configs=$(echo "$configs_input" | jq -c -R 'split(",") | map(gsub("^\\s+|\\s+$"; ""))')
+          fi
+          
+          matrix_include=$(echo "$full_mapping" | jq -c --argjson targets "$selected_targets" --argjson configs "$configs" '
+            [
+              $targets[] as $t |
+              $configs[] as $c |
+              {
+                target: $t,
+                configuration: $c,
+                runner: .[$t].runner,
+                workload: .[$t].workload,
+                projects: .[$t].projects,
+                rids: .[$t].rids
+              }
+            ]
+          ')
+          
+          echo "matrix_include=$matrix_include" >> $GITHUB_OUTPUT
+
+  build:
+    name: Build ${{ matrix.target }} (${{ matrix.configuration }})
+    needs: setup
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.setup.outputs.matrix_include) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Linux Dependencies
+        if: startsWith(matrix.target, 'linux-')
+        run: |
+          if command -v sudo >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y libx11-dev libgl1-mesa-dev libxext-dev
+          else
+            apt-get update
+            apt-get install -y libx11-dev libgl1-mesa-dev libxext-dev
+          fi
+
+      - name: Install Dotnet Workload
+        if: matrix.workload != null && matrix.workload != ''
+        run: dotnet workload install ${{ matrix.workload }} --no-cache
+
+      - name: Restore Dependencies
+        run: dotnet restore
+
+      - name: Build Base BgfXna Project
+        run: dotnet build BgfXna/BgfXna.csproj -c ${{ matrix.configuration }}
+
+      - name: Copy Base BgfXna Library
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "dist/BgfXna/${{ matrix.configuration }}" -Force
+          Copy-Item -Path "BgfXna/bin/${{ matrix.configuration }}/*" -Destination "dist/BgfXna/${{ matrix.configuration }}" -Recurse -Force
+
+      - name: Build and Publish Projects
+        shell: pwsh
+        run: |
+          $projects = '${{ toJSON(matrix.projects) }}' | ConvertFrom-Json
+          $rids = '${{ toJSON(matrix.rids) }}' | ConvertFrom-Json
+          $config = '${{ matrix.configuration }}'
+          
+          New-Item -ItemType Directory -Path "dist/samples" -Force
+          New-Item -ItemType Directory -Path "dist/publish" -Force
+          
+          foreach ($proj in $projects) {
+              if ([string]::IsNullOrEmpty($proj)) { continue }
+              $projName = [System.IO.Path]::GetFileNameWithoutExtension($proj)
+              Write-Host "Processing Project: $projName ($proj)"
+              
+              # 1. Build project in current configuration
+              Write-Host "Building project..."
+              dotnet build $proj -c $config
+              
+              # Copy build output
+              $binFolder = "dist/samples/$projName/$config"
+              New-Item -ItemType Directory -Path $binFolder -Force
+              
+              $projDir = [System.IO.Path]::GetDirectoryName($proj)
+              $buildBin = Join-Path $projDir "bin/$config"
+              if (Test-Path $buildBin) {
+                  Copy-Item -Path "$buildBin/*" -Destination $binFolder -Recurse -Force
+              }
+              
+              # 2. If configuration is Release, also run dotnet publish for each RID
+              if ($config -eq "Release") {
+                  foreach ($rid in $rids) {
+                      if ([string]::IsNullOrEmpty($rid)) { continue }
+                      Write-Host "Publishing project for RID $rid..."
+                      $publishFolder = "dist/publish/$rid/$projName"
+                      New-Item -ItemType Directory -Path $publishFolder -Force
+                      
+                      dotnet publish $proj -r $rid -c Release -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false
+                  }
+              }
+          }
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-${{ matrix.target }}-${{ matrix.configuration }}
+          path: dist/
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate Release Name
+        id: vars
+        run: |
+          timestamp=$(date +%s)
+          date_human=$(date +'%Y-%m-%d')
+          time_human=$(date +'%r')
+          
+          release_name="bgfxna-build-${{ github.run_number }}"
+          tag_name="bgfxna-build-${{ github.run_number }}"
+          
+          echo "release_name=${release_name}" >> $GITHUB_OUTPUT
+          echo "tag_name=${tag_name}" >> $GITHUB_OUTPUT
+          
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "Pre-release build of the BgfXna framework and sample applications." >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "Build Number: ${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "Commit: ${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "Date: ${date_human} at ${time_human}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Zip Artifacts
+        run: |
+          cd artifacts
+          for d in publish-*; do
+            if [ -d "$d" ]; then
+              zip -r "${d}.zip" "$d"
+            fi
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag_name }}
+          name: ${{ steps.vars.outputs.release_name }}
+          body: ${{ steps.vars.outputs.body }}
+          files: artifacts/*.zip
+          draft: false
+          prerelease: true
