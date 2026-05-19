@@ -130,10 +130,13 @@ jobs:
       - name: Select Xcode
         if: runner.os == 'macOS'
         run: |
-          # 1. Determine active/latest Xcode path (must be a real directory, not a symlink)
+          # Disable exit-on-error so helper utility checks (like defaults read or xcode-select) never crash this environment setup step
+          set +e
+          
+          # 1. Determine active/latest Xcode path (must be a real directory with a functional xcodebuild binary inside)
           XCODE_PATH=""
           for app in $(find /Applications -maxdepth 1 -name "Xcode_*.app" -type d | sort -V); do
-            if [ -d "$app" ] && [ ! -L "$app" ]; then
+            if [ -d "$app" ] && [ ! -L "$app" ] && [ -x "$app/Contents/Developer/usr/bin/xcodebuild" ]; then
               XCODE_PATH="$app"
             fi
           done
