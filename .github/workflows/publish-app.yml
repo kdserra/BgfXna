@@ -311,7 +311,8 @@ jobs:
               $extraArgs = @()
               if ($tf -eq "net10.0-ios") {
                   $extraArgs += "-p:EnableCodeSigning=false"
-                  $extraArgs += "-p:MtouchLink=None"
+                  $extraArgs += "-p:MtouchLink=SdkOnly"
+                  $extraArgs += "-p:MtouchExtraArgs=--registrar:dynamic"
               }
               
               # 1. Build project in current configuration (automatic targeted restore)
