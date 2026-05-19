@@ -152,7 +152,19 @@ jobs:
           
           # 3. Create compatibility symlinks for the selected Xcode version (e.g. Xcode_26.3.0.app)
           if [ -d "$DEVELOPER_DIR" ]; then
-            XCODE_VER=$("$DEVELOPER_DIR/usr/bin/xcodebuild" -version 2>/dev/null | head -n 1 | awk '{print $2}')
+            # Extract Xcode version from Info.plist or version.plist using defaults read
+            XCODE_VER=$(defaults read "$XCODE_PATH/Contents/Info" CFShortVersionString 2>/dev/null)
+            if [ -z "$XCODE_VER" ]; then
+              XCODE_VER=$(defaults read "$XCODE_PATH/Contents/Info" CFBundleShortVersionString 2>/dev/null)
+            fi
+            if [ -z "$XCODE_VER" ]; then
+              XCODE_VER=$(defaults read "$XCODE_PATH/Contents/version" CFBundleShortVersionString 2>/dev/null)
+            fi
+            # If all plist options fail, try calling xcodebuild as a fallback
+            if [ -z "$XCODE_VER" ]; then
+              XCODE_VER=$("$DEVELOPER_DIR/usr/bin/xcodebuild" -version 2>/dev/null | head -n 1 | awk '{print $2}')
+            fi
+            
             echo "Active Xcode Version is $XCODE_VER"
             if [ ! -z "$XCODE_VER" ]; then
               # If version starts with MAJOR.MINOR, create major.minor.app and major.minor.0.app symlinks
@@ -176,6 +188,21 @@ jobs:
               fi
             fi
           fi
+          
+          # 4. Also create compatibility links from any other versioned Xcode filenames found in /Applications
+          for app in /Applications/Xcode_*.app; do
+            if [ -d "$app" ]; then
+              filename=$(basename "$app" .app)
+              if [[ "$filename" =~ Xcode_([0-9]+\.[0-9]+)$ ]]; then
+                ver="${BASH_REMATCH[1]}"
+                compat="/Applications/Xcode_${ver}.0.app"
+                if [ ! -e "$compat" ] && [ "$app" != "$compat" ]; then
+                  echo "Creating compatibility link from $app to $compat"
+                  sudo ln -s "$app" "$compat"
+                fi
+              fi
+            fi
+          done
 
       - name: Pre-create Xcode Settings Plist
         if: runner.os == 'macOS'
