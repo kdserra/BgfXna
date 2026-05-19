@@ -157,19 +157,18 @@ jobs:
           $target = '${{ matrix.target }}'
           $config = '${{ matrix.configuration }}'
           if ($target -eq "browser-wasm") {
-              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0-browser
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0-browser -p:IncludeMobileTargets=true
           } elseif ($target -eq "ios-arm64") {
-              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0-ios
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0-ios -p:IncludeMobileTargets=true
           } elseif ($target.StartsWith("android-")) {
-              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0-android
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0-android -p:IncludeMobileTargets=true
           } elseif ($target.StartsWith("osx-")) {
-              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0
-              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0-macos
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0-macos -p:IncludeMobileTargets=true
           } elseif ($target -eq "win-x64") {
-              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0
-              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0-windows
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0
           } else {
-              dotnet build BgfXna/BgfXna.csproj -c $config -f net10.0
+              dotnet build BgfXna/BgfXna.csproj -c $config -p:TargetFrameworks=net10.0
           }
 
       - name: Copy Base BgfXna Library
@@ -209,7 +208,7 @@ jobs:
               
               # 1. Build project in current configuration (automatic targeted restore)
               Write-Host "Building project for target framework $tf..."
-              dotnet build $proj -c $config -f $tf
+              dotnet build $proj -c $config -p:TargetFrameworks=$tf -p:IncludeMobileTargets=true
               
               # Copy build output
               $binFolder = "dist/samples/$projName/$config"
@@ -229,7 +228,7 @@ jobs:
                       $publishFolder = "dist/publish/$rid/$projName"
                       New-Item -ItemType Directory -Path $publishFolder -Force
                       
-                      dotnet publish $proj -r $rid -c Release -f $tf -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false
+                      dotnet publish $proj -r $rid -c Release -p:TargetFrameworks=$tf -p:IncludeMobileTargets=true -o $publishFolder --self-contained true -p:DebugSymbols=false -p:DebugType=none -p:StripSymbols=true -p:GenerateDocumentationFile=false
                   }
               }
           }
