@@ -133,6 +133,22 @@ jobs:
           unzip -o native.zip
           rm native.zip
 
+          # Download and unpack Linux SDL3 binaries which are missing from native.zip
+          for conf in Debug Release; do
+            for arch in x64 arm64; do
+              zip_name="sdl3-linux-${arch}-${conf}.zip"
+              echo "Downloading and unzipping ${zip_name}..."
+              gh release download "sdl-deps-17" --repo "${{ github.repository }}" --pattern "${zip_name}"
+              unzip -o "${zip_name}"
+              dest_dir="native/bgfx/bin/${conf}/linux-${arch}"
+              mkdir -p "${dest_dir}"
+              mv sdl3-linux-${arch}-${conf}/libSDL3.so* "${dest_dir}/"
+              rm -f "${zip_name}"
+              rm -rf "sdl3-linux-${arch}-${conf}"
+            done
+          done
+
+
       - name: Select Xcode
         if: runner.os == 'macOS'
         run: |
