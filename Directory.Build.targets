@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETCoreApp' and $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux-'))">
-    <None Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)/$(RuntimeIdentifier)/*.so" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)/$(RuntimeIdentifier)')">
+    <None Include="$(BgfXnaNativeRuntimeRoot)$(Configuration)/$(RuntimeIdentifier)/*.so*" Condition="Exists('$(BgfXnaNativeRuntimeRoot)$(Configuration)/$(RuntimeIdentifier)')">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>%(Filename)%(Extension)</Link>
     </None>
