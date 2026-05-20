@@ -36,11 +36,32 @@ internal sealed class SdlAutoPongWindow : IDisposable
             {
                 if (libraryName == "SDL3")
                 {
+                    IntPtr handle = IntPtr.Zero;
                     if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux))
                     {
-                        // 1. Try loading from the local application directory first to ensure bundled/local libraries are prioritized
+                        // 1. Try finding and loading any libSDL3.so* file from the local application directory first
+                        try
+                        {
+                            if (System.IO.Directory.Exists(System.AppContext.BaseDirectory))
+                            {
+                                string[] files = System.IO.Directory.GetFiles(System.AppContext.BaseDirectory, "libSDL3.so*");
+                                foreach (string file in files)
+                                {
+                                    if (System.Runtime.InteropServices.NativeLibrary.TryLoad(file, assembly, searchPath, out handle))
+                                    {
+                                        return handle;
+                                    }
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // Ignore directory search errors
+                        }
+
+                        // 2. Try loading specific expected names locally
                         string localPath0 = System.IO.Path.Combine(System.AppContext.BaseDirectory, "libSDL3.so.0");
-                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad(localPath0, assembly, searchPath, out IntPtr handle))
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad(localPath0, assembly, searchPath, out handle))
                         {
                             return handle;
                         }
@@ -51,7 +72,7 @@ internal sealed class SdlAutoPongWindow : IDisposable
                             return handle;
                         }
 
-                        // 2. Fall back to standard search paths (system-wide and LD_LIBRARY_PATH)
+                        // 3. Fall back to standard search paths (system-wide and LD_LIBRARY_PATH)
                         if (System.Runtime.InteropServices.NativeLibrary.TryLoad("libSDL3.so.0", assembly, searchPath, out handle))
                         {
                             return handle;
@@ -67,9 +88,29 @@ internal sealed class SdlAutoPongWindow : IDisposable
                     }
                     else if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
                     {
-                        // 1. Try loading from the local application directory first to ensure bundled/local libraries are prioritized
+                        // 1. Try finding and loading any libSDL3*.dylib file from the local application directory first
+                        try
+                        {
+                            if (System.IO.Directory.Exists(System.AppContext.BaseDirectory))
+                            {
+                                string[] files = System.IO.Directory.GetFiles(System.AppContext.BaseDirectory, "libSDL3*.dylib");
+                                foreach (string file in files)
+                                {
+                                    if (System.Runtime.InteropServices.NativeLibrary.TryLoad(file, assembly, searchPath, out handle))
+                                    {
+                                        return handle;
+                                    }
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // Ignore directory search errors
+                        }
+
+                        // 2. Try loading specific expected names locally
                         string localPath0 = System.IO.Path.Combine(System.AppContext.BaseDirectory, "libSDL3.0.dylib");
-                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad(localPath0, assembly, searchPath, out IntPtr handle))
+                        if (System.Runtime.InteropServices.NativeLibrary.TryLoad(localPath0, assembly, searchPath, out handle))
                         {
                             return handle;
                         }
@@ -80,7 +121,7 @@ internal sealed class SdlAutoPongWindow : IDisposable
                             return handle;
                         }
 
-                        // 2. Fall back to standard search paths
+                        // 3. Fall back to standard search paths
                         if (System.Runtime.InteropServices.NativeLibrary.TryLoad("libSDL3.0.dylib", assembly, searchPath, out handle))
                         {
                             return handle;
