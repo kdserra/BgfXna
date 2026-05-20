@@ -28,8 +28,8 @@ jobs:
           full_mapping='{
             "win-x64": {"runner": "windows-latest"},
             "win-arm64": {"runner": "windows-latest"},
-            "linux-x64": {"runner": "ubuntu-latest"},
-            "linux-arm64": {"runner": "ubuntu-24.04-arm"},
+            "linux-x64": {"runner": "ubuntu-latest", "container": "ubuntu:20.04"},
+            "linux-arm64": {"runner": "ubuntu-24.04-arm", "container": "ubuntu:20.04"},
             "osx-x64": {"runner": "macos-latest"},
             "osx-arm64": {"runner": "macos-latest"},
             "android-x86": {"runner": "ubuntu-latest"},
@@ -61,7 +61,7 @@ jobs:
             [
               $targets[] as $t |
               $configs[] as $c |
-              {target: $t, configuration: $c, runner: .[$t].runner}
+              {target: $t, configuration: $c, runner: .[$t].runner, container: .[$t].container}
             ]
           ')
           
@@ -71,6 +71,7 @@ jobs:
     name: Build ${{ matrix.target }} (${{ matrix.configuration }})
     needs: setup
     runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
     strategy:
       fail-fast: false
       matrix:
@@ -83,8 +84,13 @@ jobs:
       - name: Install Linux Dependencies
         if: startsWith(matrix.target, 'linux-') || matrix.target == 'steamos'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libx11-dev libxext-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev libxss-dev libxxf86vm-dev libasound2-dev libpulse-dev libdbus-1-dev libxtst-dev
+          if command -v sudo >/dev/null; then
+            SUDO="sudo"
+          else
+            SUDO=""
+          fi
+          $SUDO apt-get update
+          $SUDO apt-get install -y build-essential cmake git libx11-dev libxext-dev libxcursor-dev libxinerama-dev libxi-dev libxrandr-dev libxss-dev libxxf86vm-dev libasound2-dev libpulse-dev libdbus-1-dev libxtst-dev
 
       - name: Setup Emscripten
         if: matrix.target == 'emscripten'

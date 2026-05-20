@@ -134,11 +134,16 @@ jobs:
           rm native.zip
 
           # Download and unpack Linux SDL3 binaries which are missing from native.zip
+          latest_sdl_tag=$(gh release list -L 20 | grep -o "sdl-deps-[0-9]*" | head -n 1)
+          if [ -z "$latest_sdl_tag" ]; then
+            latest_sdl_tag="sdl-deps-17"
+          fi
+          echo "Using SDL3 release tag: $latest_sdl_tag"
           for conf in Debug Release; do
             for arch in x64 arm64; do
               zip_name="sdl3-linux-${arch}-${conf}.zip"
               echo "Downloading and unzipping ${zip_name}..."
-              gh release download "sdl-deps-17" --repo "${{ github.repository }}" --pattern "${zip_name}"
+              gh release download "$latest_sdl_tag" --repo "${{ github.repository }}" --pattern "${zip_name}"
               unzip -o "${zip_name}"
               dest_dir="native/bgfx/bin/${conf}/linux-${arch}"
               mkdir -p "${dest_dir}"
@@ -147,6 +152,7 @@ jobs:
               rm -rf "sdl3-linux-${arch}-${conf}"
             done
           done
+
 
 
       - name: Select Xcode
